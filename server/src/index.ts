@@ -13,6 +13,7 @@ import { initCustomSets } from "./customSets/store.js";
 import { getGameName, initGameName } from "./gameName/store.js";
 import { getDefaultRoleNames, initRoleNames } from "./roleNames/store.js";
 import { bg, displayName, registerBarGames } from "./bargames.js";
+import { installShutdown, SOCKET_SERVER_OPTIONS } from "@bargames/gamekit/server";
 import { getDefaultTheme, initDefaultTheme } from "./tableStyle/store.js";
 import { RoomManager } from "./rooms/RoomManager.js";
 import { registerSocketHandlers } from "./socket/index.js";
@@ -188,8 +189,7 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   // can leave a player staring at a frozen board for the best part of a
   // minute. Tighter values trade a little idle traffic for spotting a dead
   // link in ~15s, at which point the client reconnects and re-syncs.
-  pingInterval: 10000,
-  pingTimeout: 5000,
+  ...SOCKET_SERVER_OPTIONS,
 });
 
 const roomManager = new RoomManager(io, cardData, getDefaultTheme());
@@ -206,54 +206,26 @@ httpServer.listen(PORT, () => {
 // console control event), escalating to a hard kill after ~1.5s per stage
 // if the process hasn't exited - the delay below stays well under that so
 // the graceful path always wins over the hard kill.
-let shuttingDown = false;
-function shutdown(logLine: string, playerMessage: string, exitCode: number): void {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  const closed = roomManager.closeAllRooms(playerMessage, "shutdown");
-  log.info("shutdown", logLine, { roomsClosed: closed });
-  // Deliver the room_closed events just queued (a no-op standalone).
-  void bg.flush();
-  // Give the "kicked" emits a moment to actually reach clients before the
-  // process (and its open sockets) go away.
-  setTimeout(() => {
-    httpServer.close(() => process.exit(exitCode));
-    setTimeout(() => process.exit(exitCode), 500).unref();
-  }, 400);
-}
-
-function gracefulShutdown(signal: string): void {
-  shutdown(
-    `${signal} received`,
+installShutdown(roomManager.registry, {
+  restartReason:
     "The server is restarting to apply an update — sorry for the interruption! This app is a work in progress. Rejoin with your room code in a few seconds.",
-    0
-  );
-}
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  crashReason:
+    "The server hit an unexpected error and had to restart — sorry! This app is a work in progress. Rejoin with your room code in a few seconds.",
+  // Give the "kicked" emits a moment to reach phones before sockets drop.
+  drainMs: 400,
+  // Deliver the room_closed events just queued (a no-op standalone).
+  flush: () => bg.flush(),
+  // io.close() drops every socket and closes the HTTP server at once -
+  // httpServer.close() alone would wait on open WebSockets, and NSSM
+  // escalates to a hard kill after ~1.5 s.
+  beforeExit: () => new Promise<void>((resolve) => io.close(() => resolve())),
+  log,
+});
 
-// Last line of defence. Room phase timers (Room.safeTimeout) and the idle
-// sweep already contain their own failures to a single room, so reaching
-// here means something threw outside all of that. Node's default for an
-// uncaught throw is to print the stack and exit immediately, which would
-// drop every connected player mid-round with no explanation at all - so
-// even though the process state is no longer trustworthy and we must still
-// exit, it's worth the few hundred ms to tell people why first.
-process.on("uncaughtException", (err) => {
-  log.error("crash", "uncaught exception - shutting down", { err: String(err) });
+// The kit logs a crash's message; keep the full stack in the error log too,
+// since that's what a crash report actually needs.
+const logStack = (err: unknown) => {
   if (err instanceof Error && err.stack) console.error(err.stack);
-  shutdown(
-    "uncaughtException",
-    "The server hit an unexpected error and had to restart — sorry! This app is a work in progress. Rejoin with your room code in a few seconds.",
-    1
-  );
-});
-process.on("unhandledRejection", (reason) => {
-  log.error("crash", "unhandled promise rejection - shutting down", { reason: String(reason) });
-  if (reason instanceof Error && reason.stack) console.error(reason.stack);
-  shutdown(
-    "unhandledRejection",
-    "The server hit an unexpected error and had to restart — sorry! This app is a work in progress. Rejoin with your room code in a few seconds.",
-    1
-  );
-});
+};
+process.on("uncaughtException", logStack);
+process.on("unhandledRejection", logStack);

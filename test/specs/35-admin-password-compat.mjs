@@ -52,6 +52,26 @@ export default async function () {
     assert(/damaged/i.test(bad.error ?? ""), `the error says why: ${JSON.stringify(bad)}`);
     assertEqual(readFileSync(hashPath, "utf8"), "{ this is not json", "the damaged file is left untouched");
     d.close();
+    await server.stop();
+    server = null;
+
+    // --- Rollback safety: a password chosen through the wizard NOW must be
+    // readable by the pre-kit code (scrypt over the salt's hex string), so
+    // rolling a deployment back never locks its admin out.
+    const freshPath = path.join(dir, "admin-password-fresh.json");
+    server = await startServer({ port: 3479, env: { ADMIN_PASSWORD_HASH_PATH: freshPath } });
+    const e = makeClient(server.baseUrl, "Admin3");
+    await waitFor(() => e.socket.connected, { label: "connect 3" });
+    const fresh = await e.ack("adminCompleteSetup", { password: "new-setup-pw", confirm: "new-setup-pw" });
+    assert(fresh.ok, `setup on a fresh server: ${JSON.stringify(fresh)}`);
+    const written = JSON.parse(readFileSync(freshPath, "utf8"));
+    assertEqual(written.format, "string", "new hashes record this game's salt format");
+    assertEqual(
+      scryptSync("new-setup-pw", written.salt, 64).toString("hex"),
+      written.hash,
+      "the pre-kit algorithm verifies a hash written now"
+    );
+    e.close();
   } finally {
     await server?.stop().catch(() => {});
     rmSync(dir, { recursive: true, force: true });
