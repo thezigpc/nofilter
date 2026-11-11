@@ -10,7 +10,7 @@ import { customSetToPackSummary } from "../rooms/Room.js";
 import { getCoreSetInfo, uploadCoreSet } from "../cards/coreSet.js";
 import { setGameName } from "../gameName/store.js";
 import { setDefaultRoleNames } from "../roleNames/store.js";
-import { casting } from "../bargames.js";
+import { casting, clientIp } from "../bargames.js";
 import { setDefaultTheme } from "../tableStyle/store.js";
 import { deletePreset, listPresets, savePreset } from "../presets/store.js";
 import { addBlackCard, addWhiteCard, deleteCard, listCustomCards, mergeUploadedCards } from "../customCards/store.js";
@@ -103,7 +103,7 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
     };
 
     socket.on("adminLogin", async ({ password }, cb) => {
-      const result = await login(typeof password === "string" ? password : "");
+      const result = await login(typeof password === "string" ? password : "", clientIp(socket.request));
       if (!result.ok) {
         log.warn("admin", "failed login", { reason: result.reason });
         return cb({
@@ -111,7 +111,9 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
           error:
             result.reason === "throttled"
               ? "Too many sign-in attempts right now - wait a moment and try again."
-              : undefined,
+              : result.reason === "broken"
+                ? "The admin password file on the server is damaged - fix or remove it, then restart."
+                : undefined,
         });
       }
       isAdmin = true;
@@ -146,13 +148,15 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
         return cb({ ok: false, error: "Passwords don't match." });
       }
       const done = await completeSetup(password);
-      if (!done) {
-        return cb({ ok: false, error: "Setup was already completed - sign in instead." });
+      if (!done.ok) {
+        return cb({
+          ok: false,
+          error: (await setupNeeded()) ? done.error : "Setup was already completed - sign in instead.",
+        });
       }
-      const result = await login(password);
-      if (!result.ok) return cb({ ok: false, error: "Setup succeeded but sign-in failed - try logging in." });
       isAdmin = true;
-      cb({ ok: true, token: result.token });
+      log.info("admin", "first-run setup completed - admin password set");
+      cb({ ok: true, token: done.token });
     });
 
     // Room management - unlike the card library, there's no legitimate
