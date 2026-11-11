@@ -9,7 +9,7 @@ import {
   type TableTheme,
 } from "@tabletop-judge/shared";
 import { DEFAULT_THEME_PATH } from "../config.js";
-import { loadJsonFile, saveJsonFileAtomic } from "../util/jsonFileStore.js";
+import { store } from "../util/store.js";
 
 /**
  * The server-wide default look: what a brand new room starts with, and
@@ -51,7 +51,7 @@ let loaded = false;
 
 async function ensureLoaded(): Promise<void> {
   if (loaded) return;
-  const stored = await loadJsonFile(DEFAULT_THEME_PATH, isDefaultTheme);
+  const stored = await store.read(DEFAULT_THEME_PATH, isDefaultTheme);
   if (stored) {
     const s = stored as Partial<DefaultTheme>;
     current = {
@@ -100,6 +100,6 @@ export async function setDefaultTheme(next: {
     mobileBackgroundEnabled: next.mobileBackgroundEnabled,
     facedownOpacity: Math.min(MAX_FACEDOWN_OPACITY, Math.max(MIN_FACEDOWN_OPACITY, next.facedownOpacity)),
   };
-  await saveJsonFileAtomic(DEFAULT_THEME_PATH, current);
+  await store.write(DEFAULT_THEME_PATH, current);
   return current;
 }

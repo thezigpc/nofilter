@@ -1,6 +1,6 @@
 import type { PackSelectionPreset } from "@tabletop-judge/shared";
 import { PACK_SELECTION_PRESETS_PATH } from "../config.js";
-import { loadJsonFile, saveJsonFileAtomic } from "../util/jsonFileStore.js";
+import { store } from "../util/store.js";
 
 function isPresetArray(parsed: unknown): parsed is PackSelectionPreset[] {
   return Array.isArray(parsed);
@@ -11,12 +11,12 @@ let loaded = false;
 
 async function ensureLoaded(): Promise<void> {
   if (loaded) return;
-  presets = (await loadJsonFile(PACK_SELECTION_PRESETS_PATH, isPresetArray)) ?? [];
+  presets = (await store.read(PACK_SELECTION_PRESETS_PATH, isPresetArray)) ?? [];
   loaded = true;
 }
 
 async function persist(): Promise<void> {
-  await saveJsonFileAtomic(PACK_SELECTION_PRESETS_PATH, presets);
+  await store.write(PACK_SELECTION_PRESETS_PATH, presets);
 }
 
 export async function listPresets(): Promise<PackSelectionPreset[]> {

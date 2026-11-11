@@ -2,7 +2,7 @@ import type { GameSetupPreset } from "@tabletop-judge/shared";
 import { hasLegacyKeys, migrateLegacyGameSetup } from "@tabletop-judge/shared";
 import { log } from "../util/logger.js";
 import { GAME_SETUP_PRESETS_PATH } from "../config.js";
-import { loadJsonFile, saveJsonFileAtomic } from "../util/jsonFileStore.js";
+import { store } from "../util/store.js";
 
 function isPresetArray(parsed: unknown): parsed is GameSetupPreset[] {
   return Array.isArray(parsed);
@@ -13,7 +13,7 @@ let loaded = false;
 
 async function ensureLoaded(): Promise<void> {
   if (loaded) return;
-  const raw = (await loadJsonFile(GAME_SETUP_PRESETS_PATH, isPresetArray)) ?? [];
+  const raw = (await store.read(GAME_SETUP_PRESETS_PATH, isPresetArray)) ?? [];
   // Presets saved before the Judge/Wild Card rename carry the old keys
   // (randoCardrissian, randoCanScore, czar_accent). Map them forward and
   // rewrite the file once, so existing deployments need no hand-editing.
@@ -26,7 +26,7 @@ async function ensureLoaded(): Promise<void> {
 }
 
 async function persist(): Promise<void> {
-  await saveJsonFileAtomic(GAME_SETUP_PRESETS_PATH, presets);
+  await store.write(GAME_SETUP_PRESETS_PATH, presets);
 }
 
 export async function listPresets(): Promise<GameSetupPreset[]> {

@@ -1,7 +1,7 @@
 import { nanoid } from "nanoid";
 import type { CustomCardsData } from "@tabletop-judge/shared";
 import { CUSTOM_CARDS_PATH } from "../config.js";
-import { loadJsonFile, saveJsonFileAtomic } from "../util/jsonFileStore.js";
+import { store } from "../util/store.js";
 import { resolvePick } from "../cards/validate.js";
 
 function isCustomCardsData(parsed: unknown): parsed is CustomCardsData {
@@ -14,12 +14,12 @@ let loaded = false;
 
 async function ensureLoaded(): Promise<void> {
   if (loaded) return;
-  data = (await loadJsonFile(CUSTOM_CARDS_PATH, isCustomCardsData)) ?? { white: [], black: [] };
+  data = (await store.read(CUSTOM_CARDS_PATH, isCustomCardsData)) ?? { white: [], black: [] };
   loaded = true;
 }
 
 async function persist(): Promise<void> {
-  await saveJsonFileAtomic(CUSTOM_CARDS_PATH, data);
+  await store.write(CUSTOM_CARDS_PATH, data);
 }
 
 function cleanText(text: string): string {

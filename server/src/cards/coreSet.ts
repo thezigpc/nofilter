@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import type { CoreSetInfo, CoreSetUploadReport, UploadCoreSetPack } from "@tabletop-judge/shared";
 import { BUNDLED_SAMPLE_CARD_DATA_PATH, CARD_DATA_PATH_OVERRIDE, CORE_SET_PATH } from "../config.js";
-import { loadJsonFile, saveJsonFileAtomic } from "../util/jsonFileStore.js";
+import { store } from "../util/store.js";
 import { buildCardData, resolveCategory, type LoadedCardData, type RawPack } from "./loader.js";
 import { validateAndRepairCards } from "./validate.js";
 import { log } from "../util/logger.js";
@@ -31,7 +31,7 @@ export async function loadInitialCardData(): Promise<LoadedCardData> {
     source = "env_override";
     log.info("boot", "card data: using CARD_DATA_PATH override", { path: CARD_DATA_PATH_OVERRIDE });
   } else {
-    const uploaded = await loadJsonFile(CORE_SET_PATH, isRawPackArray);
+    const uploaded = await store.read(CORE_SET_PATH, isRawPackArray);
     if (uploaded) {
       currentPacks = uploaded;
       source = "uploaded_core_set";
@@ -128,7 +128,7 @@ async function runUpload(mode: "add" | "replace", rawPacks: UploadCoreSetPack[])
   source = "uploaded_core_set";
   report.totalPacks = currentPacks.length;
 
-  await saveJsonFileAtomic(CORE_SET_PATH, currentPacks);
+  await store.write(CORE_SET_PATH, currentPacks);
   log.info("cards", "core set updated", { mode, packsAdded: report.packsAdded, totalPacks: report.totalPacks });
   return { cardData: buildCardData(currentPacks), report };
 }
@@ -177,7 +177,7 @@ async function runDelete(name: string): Promise<DeleteOutcome> {
   // where it started - same reasoning as uploadCoreSet's own source flip.
   source = "uploaded_core_set";
 
-  await saveJsonFileAtomic(CORE_SET_PATH, currentPacks);
+  await store.write(CORE_SET_PATH, currentPacks);
   log.info("cards", "core set pack deleted", { name: trimmed, removedCount, totalPacks: currentPacks.length });
   return { cardData: buildCardData(currentPacks), removedCount };
 }

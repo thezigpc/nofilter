@@ -1,7 +1,7 @@
 import { nanoid } from "nanoid";
 import type { CustomSet } from "@tabletop-judge/shared";
 import { CUSTOM_SETS_PATH } from "../config.js";
-import { loadJsonFile, saveJsonFileAtomic } from "../util/jsonFileStore.js";
+import { store } from "../util/store.js";
 import { resolvePick } from "../cards/validate.js";
 
 function isCustomSetArray(parsed: unknown): parsed is CustomSet[] {
@@ -13,12 +13,12 @@ let loaded = false;
 
 async function ensureLoaded(): Promise<void> {
   if (loaded) return;
-  sets = (await loadJsonFile(CUSTOM_SETS_PATH, isCustomSetArray)) ?? [];
+  sets = (await store.read(CUSTOM_SETS_PATH, isCustomSetArray)) ?? [];
   loaded = true;
 }
 
 async function persist(): Promise<void> {
-  await saveJsonFileAtomic(CUSTOM_SETS_PATH, sets);
+  await store.write(CUSTOM_SETS_PATH, sets);
 }
 
 function cleanText(text: string): string {

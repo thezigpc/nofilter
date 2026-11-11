@@ -1,6 +1,6 @@
 import { DEFAULT_GAME_NAME } from "@tabletop-judge/shared";
 import { GAME_NAME_PATH } from "../config.js";
-import { loadJsonFile, saveJsonFileAtomic } from "../util/jsonFileStore.js";
+import { store } from "../util/store.js";
 
 interface GameNameData {
   name: string;
@@ -16,7 +16,7 @@ let loaded = false;
 
 async function ensureLoaded(): Promise<void> {
   if (loaded) return;
-  const data = await loadJsonFile(GAME_NAME_PATH, isGameNameData);
+  const data = await store.read(GAME_NAME_PATH, isGameNameData);
   if (data) name = data.name;
   loaded = true;
 }
@@ -37,7 +37,7 @@ export async function setGameName(next: string): Promise<string> {
   const clean = next.trim().slice(0, 60);
   if (clean) {
     name = clean;
-    await saveJsonFileAtomic(GAME_NAME_PATH, { name });
+    await store.write(GAME_NAME_PATH, { name });
   }
   return name;
 }

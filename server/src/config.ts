@@ -12,7 +12,7 @@ const projectRoot = path.resolve(__dirname, "../..");
 // Bar Games box, whose root filesystem is read-only): every store defaults
 // under it, so one writable volume holds all of it.
 export const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : null;
-const dataRoot = DATA_DIR ?? projectRoot;
+export const dataRoot = DATA_DIR ?? projectRoot;
 
 export const PORT = Number(process.env.PORT ?? 3001);
 

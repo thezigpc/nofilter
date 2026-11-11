@@ -1,7 +1,7 @@
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { ADMIN_PASSWORD, ADMIN_PASSWORD_HASH_PATH } from "../config.js";
-import { loadJsonFile, saveJsonFileAtomic } from "../util/jsonFileStore.js";
+import { store } from "../util/store.js";
 import { log } from "../util/logger.js";
 
 /**
@@ -53,7 +53,7 @@ let cachedHash: StoredHash | null | undefined; // undefined = not loaded yet
 
 async function loadStoredHash(): Promise<StoredHash | null> {
   if (cachedHash !== undefined) return cachedHash;
-  cachedHash = (await loadJsonFile(ADMIN_PASSWORD_HASH_PATH, isStoredHash)) ?? null;
+  cachedHash = (await store.read(ADMIN_PASSWORD_HASH_PATH, isStoredHash)) ?? null;
   return cachedHash;
 }
 
@@ -186,7 +186,7 @@ export async function completeSetup(password: string): Promise<boolean> {
   if (password.length < 8) return false;
   const salt = randomBytes(16).toString("hex");
   const hash: StoredHash = { hash: (await hashPassword(password, salt)).toString("hex"), salt };
-  await saveJsonFileAtomic(ADMIN_PASSWORD_HASH_PATH, hash);
+  await store.write(ADMIN_PASSWORD_HASH_PATH, hash);
   cachedHash = hash;
   log.info("admin", "first-run setup completed - admin password set");
   return true;
