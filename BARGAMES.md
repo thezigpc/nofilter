@@ -5,7 +5,7 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 | | |
 |---|---|
 | Level | **3** (branded, events, commands and status, plus casting from the host screen) |
-| SDK | `@bargames/sdk` 0.4.0, vendored at `vendor/bargames-sdk-0.4.0.tgz` (with `@bargames/gamekit` 0.3.0) |
+| SDK | `@bargames/sdk` 0.4.0, vendored at `vendor/bargames-sdk-0.4.0.tgz` (with `@bargames/gamekit` 0.3.1) |
 | Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.1.0`, port 3001 |
 | Box wiring | [`server/src/bargames.ts`](server/src/bargames.ts) (the only file that talks to the SDK on the server) |
 | Tests | `test/specs/33-bargames-standalone.mjs`, `test/specs/34-bargames-box.mjs` (the second runs a fake box core in-process) |

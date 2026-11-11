@@ -35,7 +35,7 @@ export default function App() {
 
   return (
     <>
-      {!sharedScreen && <VenueAnnouncement ctx={venue} />}
+      <VenueAnnouncement ctx={venue} hidden={sharedScreen} />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/room/:code" element={<RoomPage />} />
