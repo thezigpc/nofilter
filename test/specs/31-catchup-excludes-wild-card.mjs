@@ -31,12 +31,19 @@ export default async function ({ baseUrl }) {
       const humansStillAt0 = room.clients.filter((c) => c.me && !c.me.isWildCard && (c.me.wonBlackCardCount ?? 0) === 0);
       if (humansStillAt0.length === 0) break;
       const pick = room.host.state.blackCard?.pick ?? 1;
+      // Track who submitted which card ids ourselves: the server only sends
+      // yourSubmissionId on voting rounds, so on a normal Judge round it is
+      // always empty and can't be used to find a player's slot.
+      const submitted = new Map();
       for (const c of room.clients) {
-        if (!c.me || c.me.isWildCard || c.state.yourSubmissionId) continue;
+        if (!c.me || c.me.isWildCard) continue;
         if (c.state.you?.isJudge && !c.state.votingThisRound) continue;
         const jokes = (c.state.yourHand ?? []).filter((card) => !card.actionCardId);
         const ids = jokes.slice(0, pick).map((card) => card.id);
-        if (ids.length === pick) c.emit("submitCards", { cardIds: ids });
+        if (ids.length === pick) {
+          c.emit("submitCards", { cardIds: ids });
+          submitted.set(c, ids);
+        }
       }
       await wait(300);
       const judge = await waitFor(
@@ -52,12 +59,13 @@ export default async function ({ baseUrl }) {
       // player is the current round's Judge (can't have submitted), fall
       // back to any OTHER human's slot - never board[0] blindly, which
       // could just as easily be Wild Card's own submission.
-      const preferred = room.clients.find(
-        (c) => c.me && !c.me.isWildCard && (c.me.wonBlackCardCount ?? 0) === 0 && c.state.yourSubmissionId
-      );
-      const anyHuman = room.clients.find((c) => c.me && !c.me.isWildCard && c.state.yourSubmissionId);
-      const chosen = preferred ?? anyHuman;
-      const slot = board.find((s) => s.submissionId === chosen?.state.yourSubmissionId) ?? board[0];
+      const slotOf = (c) => {
+        const ids = submitted.get(c);
+        return ids && board.find((s) => s.cards?.some((card) => ids.includes(card.id)));
+      };
+      const preferred = room.clients.find((c) => c.me && (c.me.wonBlackCardCount ?? 0) === 0 && slotOf(c));
+      const anyHuman = [...submitted.keys()].find((c) => slotOf(c));
+      const slot = slotOf(preferred ?? anyHuman) ?? board[0];
       judge.emit("judgePick", { submissionId: slot.submissionId });
       await room.host.waitForPhase("submission");
       await waitForDeal(room);
