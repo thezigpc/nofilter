@@ -3413,3 +3413,29 @@ button.primary {
 .role-name-field .muted {
   font-size: 0.85em;
 }
+
+/* Bar Games: a venue's colours/font replace the default look on a box.
+   Standalone the --venue-* variables are never set, so these resolve to the
+   exact values above - nothing changes. Room themes (data-table-theme) still
+   override, so a host's theme picker keeps working. */
+:root {
+  --bg: var(--venue-bg, #17171b);
+  --accent: var(--venue-accent, #2547e0);
+  font-family: var(--venue-font, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif);
+}
+
+/* Bar Games cast TV (?display=1): 5% safe margins from tableMode() on a box
+   (0 standalone), and no on-screen controls - nobody can tap a TV, staff
+   drive the room from the iPad or the host's phone. */
+.page.display-mode {
+  padding-left: max(var(--bg-safe-x, 0px), 1rem);
+  padding-right: max(var(--bg-safe-x, 0px), 1rem);
+  padding-top: var(--bg-safe-y, 0px);
+}
+.page.display-mode .room-header button,
+.page.display-mode .room-header .table-scale-label {
+  display: none;
+}
+.page.display-mode .invite-link-row button {
+  display: none;
+}

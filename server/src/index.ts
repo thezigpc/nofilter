@@ -12,6 +12,7 @@ import { initCustomCards } from "./customCards/store.js";
 import { initCustomSets } from "./customSets/store.js";
 import { getGameName, initGameName } from "./gameName/store.js";
 import { getDefaultRoleNames, initRoleNames } from "./roleNames/store.js";
+import { bg, displayName, registerBarGames } from "./bargames.js";
 import { getDefaultTheme, initDefaultTheme } from "./tableStyle/store.js";
 import { RoomManager } from "./rooms/RoomManager.js";
 import { registerSocketHandlers } from "./socket/index.js";
@@ -31,6 +32,11 @@ await initRoleNames();
 
 const app = express();
 app.use(cors({ origin: CLIENT_ORIGIN }));
+// Bar Games' reserved /__bargames/* paths (venue branding, and the box's
+// authenticated status/command calls). Before every other route, so the
+// SPA catch-all can't swallow them. Standalone it only serves venue.json
+// with "standalone": true - nothing else about the app changes.
+app.use(bg.middleware());
 app.get("/health", (_req, res) => {
   res.json({ ok: true, packs: cardData.packs.length });
 });
@@ -49,7 +55,9 @@ app.get("/api/config", async (_req, res) => {
   // the environment to close the window before the server ever starts.
   const defaultTheme = getDefaultTheme();
   res.json({
-    gameName: getGameName(),
+    // On a Bar Games box the venue's rename wins; standalone, the
+    // admin-set name exactly as before (see server/src/bargames.ts).
+    gameName: await displayName(getGameName()),
     // What the Judge and the Wild Card bot are called by default (see
     // server/src/roleNames/store.ts). The admin page reads it to prefill.
     defaultRoleNames: getDefaultRoleNames(),
@@ -186,6 +194,7 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
 
 const roomManager = new RoomManager(io, cardData, getDefaultTheme());
 registerSocketHandlers(io, roomManager);
+registerBarGames(roomManager);
 
 httpServer.listen(PORT, () => {
   log.info("boot", "server listening", { port: PORT });
@@ -201,8 +210,10 @@ let shuttingDown = false;
 function shutdown(logLine: string, playerMessage: string, exitCode: number): void {
   if (shuttingDown) return;
   shuttingDown = true;
-  const closed = roomManager.closeAllRooms(playerMessage);
+  const closed = roomManager.closeAllRooms(playerMessage, "shutdown");
   log.info("shutdown", logLine, { roomsClosed: closed });
+  // Deliver the room_closed events just queued (a no-op standalone).
+  void bg.flush();
   // Give the "kicked" emits a moment to actually reach clients before the
   // process (and its open sockets) go away.
   setTimeout(() => {

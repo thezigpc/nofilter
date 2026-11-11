@@ -17,6 +17,9 @@ COPY package.json package-lock.json ./
 COPY shared/package.json shared/package.json
 COPY server/package.json server/package.json
 COPY client/package.json client/package.json
+# The Bar Games SDK is vendored as a tarball (package.json "file:" deps), so
+# npm ci needs it in this layer.
+COPY vendor ./vendor
 RUN npm ci
 
 COPY . .
@@ -24,6 +27,13 @@ RUN npm run build && npm prune --omit=dev
 
 ENV NODE_ENV=production
 EXPOSE 3001
+
+# Runs as the image's unprivileged node user, and works on a read-only root
+# filesystem: every persisted file defaults under DATA_DIR when it's set
+# (see server/src/config.ts), so only the /data volume needs to be writable.
+# docker-compose.yml's per-file *_PATH settings already point into /data.
+RUN mkdir -p /data && chown node:node /data
+USER node
 
 # No HEALTHCHECK directive: docker-compose.yml's healthcheck covers this
 # and keeping it in one place avoids the two definitions drifting apart.

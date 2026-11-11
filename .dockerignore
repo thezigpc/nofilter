@@ -19,3 +19,18 @@ custom-sets.json
 # docs/mockups is served at runtime (server/src/index.ts) and must NOT be
 # excluded - only the design-doc source assets outside that folder, if any
 # get added later, would go here.
+
+# Every other runtime/private file that can exist in a working copy (see
+# .gitignore). A local `docker build` must match a clean-checkout CI build:
+# none of these may reach the image.
+admin-password.json
+core-set.json
+default-theme.json
+game-name.json
+role-names.json
+cards-full.json
+*.tmp
+.env
+CLAUDE.local.md
+scripts/deploy.ps1
+.claude

@@ -6,6 +6,8 @@ import { socket } from "../socket.js";
 import { clearSession, loadSession, saveSession } from "../session.js";
 import { fetchPublicConfig } from "../publicConfig.js";
 import { themeAttrs } from "../useThemeAttrs.js";
+import { useTableDisplay } from "../useVenue.js";
+import CastTvsControl from "../components/CastTvsControl.js";
 import { blackCardLengthScale, formatBlackCardText } from "../blackCardText.js";
 import Lobby from "../components/Lobby.js";
 import TableLobbyView from "../components/TableLobbyView.js";
@@ -50,6 +52,13 @@ export default function RoomPage() {
 
   const roleParam = search.get("role") === "table" ? "table" : "player";
   const isCreating = code === "new";
+  // Bar Games' cast TV (bargames.json routes.table): joins as the Shared
+  // Screen with no input at all - nobody can type or tap on a TV. A new
+  // flag, so the plain ?role=table link still asks for a name as before.
+  // `key` (venue rooms only) turns the screen into the staff controller.
+  const displayMode = roleParam === "table" && search.get("display") === "1" && !isCreating;
+  const venueKey = search.get("key") ?? undefined;
+  const [roomClosed, setRoomClosed] = useState<string | null>(null);
 
   const [state, setState] = useState<RoomStateForClient | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +92,12 @@ export default function RoomPage() {
     function onKicked(reason: ErrorPayload) {
       clearSession();
       setState(null);
+      // A TV has nowhere to go and nobody to read a toast: stay put and show
+      // that the room closed (the box moves it to its idle screen anyway).
+      if (displayMode) {
+        setRoomClosed(reason.message);
+        return;
+      }
       navigate("/", { replace: true, state: { noticeMessage: reason.message } });
     }
     // Peek's result (and any future Action Card that needs a private,
@@ -121,6 +136,7 @@ export default function RoomPage() {
           if (!ack.ok) {
             setError(ack.error.message);
             clearSession();
+            if (displayMode) setRoomClosed(ack.error.message);
           } else {
             saveSession({ roomCode: ack.roomCode, token: ack.token, name: session.name, role: session.role });
           }
@@ -174,9 +190,34 @@ export default function RoomPage() {
       window.removeEventListener("online", onOnline);
       socket.disconnect();
     };
-  }, [code, isCreating, navigate]);
+  }, [code, isCreating, navigate, displayMode]);
 
   const isCreatingTable = isCreating && roleParam === "table";
+
+  // Display mode's join: as the Shared Screen, named for it, no prompt. A
+  // saved session for this room means resumeSession() is already rejoining.
+  useEffect(() => {
+    if (!displayMode || !connected || connecting || state || roomClosed || !code) return;
+    const session = loadSession();
+    if (session && session.roomCode === code) return;
+    setConnecting(true);
+    // The staff controller (venue key) is named for what it is in the
+    // player list; a cast TV is the Shared Screen, as always.
+    const joinName = venueKey ? "Venue staff" : "Shared Screen";
+    socket.emit("joinRoom", { roomCode: code, name: joinName, role: "table", venueKey }, (ack) => {
+      setConnecting(false);
+      if (!ack.ok) {
+        setRoomClosed(ack.error.message);
+        return;
+      }
+      saveSession({ roomCode: ack.roomCode, token: ack.token, name: joinName, role: "table" });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayMode, connected, code]);
+
+  // TV chrome (pointer hidden, wake lock, banners) is for the cast TV only,
+  // not the staff controller, whose link carries the venue key.
+  useTableDisplay(displayMode && !venueKey, connected, roomClosed !== null);
 
   // The Shared Screen needs no input from whoever's setting it up - no name
   // to type (hardcoded to "Shared Screen" below, same as handleSubmitJoin's
@@ -371,6 +412,16 @@ export default function RoomPage() {
     };
   }, [isTable, state]);
 
+  if (!state && displayMode) {
+    const theming = themeAttrs(preJoinTheme.theme, preJoinTheme.accentIndex);
+    return (
+      <div className="page center display-mode" data-table-theme={theming["data-table-theme"]} style={theming.style}>
+        <h1>{roomClosed ? "This room has closed" : `Room ${code}`}</h1>
+        <p className="muted">{roomClosed ?? "Connecting to the room…"}</p>
+      </div>
+    );
+  }
+
   if (!state) {
     const theming = themeAttrs(preJoinTheme.theme, preJoinTheme.accentIndex);
     return (
@@ -469,7 +520,7 @@ export default function RoomPage() {
   return (
     <div
       ref={pageRef}
-      className={`page${isTable ? " role-table" : ""}`}
+      className={`page${isTable ? " role-table" : ""}${displayMode && !state.you.isHost ? " display-mode" : ""}`}
       data-table-theme={state.tableStyle.theme}
       data-background-style={state.tableStyle.backgroundStyle}
       data-bg-active={bgActive ? "true" : "false"}
@@ -542,6 +593,7 @@ export default function RoomPage() {
               <DoorExitIcon /> Leave
             </button>
           )}
+          <CastTvsControl isHost={state.you.isHost} />
           {state.you.isHost && (
             <button type="button" onClick={closeRoomAsHost}>
               <CloseCircleIcon /> Close Room
@@ -625,7 +677,9 @@ function RoomBody({ state }: { state: RoomStateForClient }) {
 
   switch (state.phase) {
     case "lobby":
-      return state.you.role === "table" ? <TableLobbyView state={state} /> : <Lobby state={state} />;
+      // A venue room's staff controller is a Table with host authority - it
+      // gets the real Lobby (settings, Start). Standalone a Table is never host.
+      return state.you.role === "table" && !state.you.isHost ? <TableLobbyView state={state} /> : <Lobby state={state} />;
     case "personalCards":
       return state.you.role === "player" ? (
         <PersonalCardsView state={state} />

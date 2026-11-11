@@ -6,6 +6,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // server/src -> server -> project root
 const projectRoot = path.resolve(__dirname, "../..");
 
+// Where persisted runtime data (passwords, presets, custom cards, the
+// uploaded Core Set...) lives when its own *_PATH env var isn't set.
+// Unset: the project root, exactly as before. Set (e.g. DATA_DIR=/data on a
+// Bar Games box, whose root filesystem is read-only): every store defaults
+// under it, so one writable volume holds all of it.
+export const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : null;
+const dataRoot = DATA_DIR ?? projectRoot;
+
 export const PORT = Number(process.env.PORT ?? 3001);
 
 // Room management (list/close rooms) used to be its own Express app on a
@@ -38,7 +46,7 @@ export const BUNDLED_SAMPLE_CARD_DATA_PATH = path.join(projectRoot, "sample-card
 // ADMIN_PASSWORD_HASH_PATH below.
 export const CORE_SET_PATH = process.env.CORE_SET_PATH
   ? path.resolve(process.env.CORE_SET_PATH)
-  : path.join(projectRoot, "core-set.json");
+  : path.join(dataRoot, "core-set.json");
 
 // Table style presets are a shared design library, not per-room game
 // state - one file, readable/writable from any device that connects,
@@ -46,33 +54,33 @@ export const CORE_SET_PATH = process.env.CORE_SET_PATH
 // and the Table without needing to be the same browser.
 export const TABLE_STYLE_PRESETS_PATH = process.env.TABLE_STYLE_PRESETS_PATH
   ? path.resolve(process.env.TABLE_STYLE_PRESETS_PATH)
-  : path.join(projectRoot, "table-style-presets.json");
+  : path.join(dataRoot, "table-style-presets.json");
 
 // Host-submitted card content, same sharing model as table style presets -
 // one file, available to every room via deckOptions.useCustomCards.
 export const CUSTOM_CARDS_PATH = process.env.CUSTOM_CARDS_PATH
   ? path.resolve(process.env.CUSTOM_CARDS_PATH)
-  : path.join(projectRoot, "custom-cards.json");
+  : path.join(dataRoot, "custom-cards.json");
 
 // Named, individually-selectable Custom Sets - a separate pool from the
 // loose custom cards above, each set chosen per-room the same way a real
 // pack is (see Room.buildDecks()).
 export const CUSTOM_SETS_PATH = process.env.CUSTOM_SETS_PATH
   ? path.resolve(process.env.CUSTOM_SETS_PATH)
-  : path.join(projectRoot, "custom-sets.json");
+  : path.join(dataRoot, "custom-sets.json");
 
 // Saved pack selections (e.g. "Muggles and Childhood only"), same sharing
 // model as Table Style presets.
 export const PACK_SELECTION_PRESETS_PATH = process.env.PACK_SELECTION_PRESETS_PATH
   ? path.resolve(process.env.PACK_SELECTION_PRESETS_PATH)
-  : path.join(projectRoot, "pack-selection-presets.json");
+  : path.join(dataRoot, "pack-selection-presets.json");
 
 // Saved whole-game setups (house rules + win condition + hand size + deck
 // options). Packs deliberately stay with PACK_SELECTION_PRESETS_PATH -
 // a setup answers "how do we play?", a pack preset "with which cards?".
 export const GAME_SETUP_PRESETS_PATH = process.env.GAME_SETUP_PRESETS_PATH
   ? path.resolve(process.env.GAME_SETUP_PRESETS_PATH)
-  : path.join(projectRoot, "game-setup-presets.json");
+  : path.join(dataRoot, "game-setup-presets.json");
 
 // In production the server also serves the built client (one process, one
 // origin) so the Cloudflare Tunnel deployment only needs one hostname/port.
@@ -141,7 +149,7 @@ export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
 // purely runtime data, same pattern as ADMIN_PASSWORD_HASH_PATH below.
 export const DEFAULT_THEME_PATH = process.env.DEFAULT_THEME_PATH
   ? path.resolve(process.env.DEFAULT_THEME_PATH)
-  : path.join(projectRoot, "default-theme.json");
+  : path.join(dataRoot, "default-theme.json");
 
 // Where an admin-chosen game display name is persisted - shown as the
 // browser tab title and the HomePage heading in place of a hardcoded name
@@ -149,7 +157,7 @@ export const DEFAULT_THEME_PATH = process.env.DEFAULT_THEME_PATH
 // runtime data, same pattern as ADMIN_PASSWORD_HASH_PATH below.
 export const GAME_NAME_PATH = process.env.GAME_NAME_PATH
   ? path.resolve(process.env.GAME_NAME_PATH)
-  : path.join(projectRoot, "game-name.json");
+  : path.join(dataRoot, "game-name.json");
 
 // Where a setup-wizard-chosen admin password is persisted (hashed, never
 // plaintext) when ADMIN_PASSWORD isn't set via env. Lets a fresh deploy
@@ -157,11 +165,11 @@ export const GAME_NAME_PATH = process.env.GAME_NAME_PATH
 // already know which env var to set - see server/src/admin/auth.ts.
 export const ADMIN_PASSWORD_HASH_PATH = process.env.ADMIN_PASSWORD_HASH_PATH
   ? path.resolve(process.env.ADMIN_PASSWORD_HASH_PATH)
-  : path.join(projectRoot, "admin-password.json");
+  : path.join(dataRoot, "admin-password.json");
 
 // Where the admin-chosen default names for the Judge and the Wild Card bot
 // are persisted (see server/src/roleNames/store.ts). Runtime data, same
 // pattern as GAME_NAME_PATH above.
 export const ROLE_NAMES_PATH = process.env.ROLE_NAMES_PATH
   ? path.resolve(process.env.ROLE_NAMES_PATH)
-  : path.join(projectRoot, "role-names.json");
+  : path.join(dataRoot, "role-names.json");

@@ -643,11 +643,27 @@ export interface CreateRoomRequest {
   role: Role;
 }
 
+/** Mirrors @bargames/sdk's CastTargets/CastResult, so shared needn't depend
+ * on the SDK. Only meaningful on a Bar Games box. */
+export interface CastTargetsLike {
+  enabled: boolean;
+  pinRequired: boolean;
+  displays: { id: string; name: string; group?: string; busy: boolean; showingThisGame: boolean; roomCode?: string }[];
+}
+export interface CastResultLike {
+  ok: boolean;
+  message?: string;
+  results?: Record<string, { ok: boolean; message?: string; needsCode?: boolean }>;
+}
+
 export interface JoinRoomRequest {
   roomCode: string;
   name: string;
   role: Role;
   token?: string;
+  /** Bar Games venue rooms only: the key from the box's "host controls"
+   * link. A Table joining with it gets host authority (see Room.venueKey). */
+  venueKey?: string;
 }
 
 export interface JoinAck {
@@ -876,6 +892,10 @@ export interface ClientToServerEvents {
   updateExcludedCards: (req: UpdateExcludedCardsRequest) => void;
   updateHouseRules: (req: UpdateHouseRulesRequest) => void;
   updateRoleNames: (req: { roleNames: Partial<RoleNames> }) => void;
+  /** Bar Games casting, host only. Off a box: enabled false, no network. */
+  listTvs: (cb: (targets: CastTargetsLike) => void) => void;
+  castToTvs: (req: { ids: string[]; pin?: string }, cb: (res: CastResultLike) => void) => void;
+  stopTvs: (req: { ids: string[]; pin?: string }, cb: (res: CastResultLike) => void) => void;
   updateWinCondition: (req: UpdateWinConditionRequest) => void;
   applyGameSetup: (req: { setup: GameSetup }) => void;
   listGameSetupPresets: (cb: (presets: GameSetupPreset[]) => void) => void;

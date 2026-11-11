@@ -10,6 +10,7 @@ import { customSetToPackSummary } from "../rooms/Room.js";
 import { getCoreSetInfo, uploadCoreSet } from "../cards/coreSet.js";
 import { setGameName } from "../gameName/store.js";
 import { setDefaultRoleNames } from "../roleNames/store.js";
+import { casting } from "../bargames.js";
 import { setDefaultTheme } from "../tableStyle/store.js";
 import { deletePreset, listPresets, savePreset } from "../presets/store.js";
 import { addBlackCard, addWhiteCard, deleteCard, listCustomCards, mergeUploadedCards } from "../customCards/store.js";
@@ -164,14 +165,14 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
 
     socket.on("adminCloseRoom", async ({ code }, cb) => {
       if (!(await requireAdmin("adminCloseRoom"))) return cb({ ok: false });
-      const closed = roomManager.closeRoom(code, "The host closed this room.");
+      const closed = roomManager.closeRoom(code, "The host closed this room.", "admin");
       if (closed) log.info("room", "closed by admin", { code });
       cb({ ok: closed });
     });
 
     socket.on("adminCloseAllRooms", async (cb) => {
       if (!(await requireAdmin("adminCloseAllRooms"))) return cb({ ok: false, count: 0 });
-      const count = roomManager.closeAllRooms("The host closed all rooms.");
+      const count = roomManager.closeAllRooms("The host closed all rooms.", "admin");
       log.info("room", "all rooms closed by admin", { count });
       cb({ ok: true, count });
     });
@@ -195,9 +196,16 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
       }
     });
 
-    socket.on("joinRoom", ({ roomCode: code, name, role, token }, cb) => {
+    socket.on("joinRoom", ({ roomCode: code, name, role, token, venueKey }, cb) => {
       try {
-        const { room, player, token: outToken } = roomManager.joinRoom(code, name, role, token, socket.id);
+        const { room, player, token: outToken } = roomManager.joinRoom(
+          code,
+          name,
+          role,
+          token,
+          socket.id,
+          typeof venueKey === "string" ? venueKey : undefined
+        );
         roomCode = room.code;
         playerId = player.id;
         playerName = player.name;
@@ -297,11 +305,47 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
       "closeRoom",
       withRoom((room, pid) => {
         room.requireHost(pid);
-        roomManager.closeRoom(room.code, "The host closed this room.");
+        roomManager.closeRoom(room.code, "The host closed this room.", "host");
       })
     );
 
     socket.on("playAgain", withRoom((room, pid) => room.playAgain(pid)));
+
+    // Bar Games casting (box only - off a box displays() says enabled:false
+    // and the client never shows the control). Host-only: casting is the
+    // room's call, never a player's. Each ack carries the SDK's own result
+    // so the host sees messages like "Wrong TV PIN" as-is.
+    const hostRoom = (): Room | null => {
+      if (!roomCode || !playerId) return null;
+      const room = roomManager.getRoom(roomCode);
+      if (!room) return null;
+      try {
+        room.requireHost(playerId);
+        return room;
+      } catch {
+        return null;
+      }
+    };
+    socket.on("listTvs", async (cb) => {
+      if (typeof cb !== "function") return;
+      if (!hostRoom()) return cb({ enabled: false, pinRequired: false, displays: [] });
+      cb(await casting.displays());
+    });
+    socket.on("castToTvs", async (req, cb) => {
+      if (typeof cb !== "function") return;
+      const room = hostRoom();
+      if (!room) return cb({ ok: false, message: "Only the host can put this room on the TVs." });
+      const ids = Array.isArray(req?.ids) ? req.ids.filter((id): id is string => typeof id === "string") : [];
+      const pin = typeof req?.pin === "string" ? req.pin : undefined;
+      cb(await casting.cast(room.code, ids, pin));
+    });
+    socket.on("stopTvs", async (req, cb) => {
+      if (typeof cb !== "function") return;
+      if (!hostRoom()) return cb({ ok: false, message: "Only the host can change the TVs." });
+      const ids = Array.isArray(req?.ids) ? req.ids.filter((id): id is string => typeof id === "string") : [];
+      const pin = typeof req?.pin === "string" ? req.pin : undefined;
+      cb(await casting.stop(ids, pin));
+    });
 
     socket.on("skipBlackCard", withRoom((room, pid) => room.skipBlackCard(pid)));
 

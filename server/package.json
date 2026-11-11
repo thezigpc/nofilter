@@ -9,6 +9,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@bargames/sdk": "file:../vendor/bargames-sdk-0.3.0.tgz",
     "@tabletop-judge/shared": "*",
     "cors": "^2.8.5",
     "express": "^4.19.2",

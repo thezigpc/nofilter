@@ -93,6 +93,37 @@ import { ACTION_CARD_TIER_WEIGHTS, HAND_SIZE, HOST_CLAIM_AFTER_SECONDS, ROUND_EN
 
 type IO = Server<ClientToServerEvents, ServerToClientEvents>;
 
+/** Bar Games session kinds this game uses (see bargames.json). */
+export type SessionKind = "venue" | "patron";
+
+/** Lifecycle moments a Room reports through onGameEvent. room_created and
+ * room_closed are RoomManager's, since only it sees every create and close. */
+export type RoomGameEvent = "players_changed" | "round_started" | "round_ended" | "winner" | "game_over";
+
+/** The id a Bar Games box command acts as - see Room.venueActor. Longer than
+ * nanoid(8), so it can never collide with a real player id. */
+export const VENUE_ACTOR_ID = "__venue__";
+
+/** The room's host, or (venue rooms) a keyed controller screen. */
+export function hasHostAuthority(player: ServerPlayer): boolean {
+  return player.isHost || !!player.isVenueController;
+}
+
+/** One room as Bar Games' status (and its Rooms page) sees it. Field names
+ * match @bargames/gamekit's RoomOverview so that registry can replace this. */
+export interface RoomOverview {
+  code: string;
+  kind: SessionKind;
+  players: number;
+  phase: string;
+  title?: string;
+  hostConnected?: boolean;
+  hostName?: string;
+  tables: number;
+  createdAt: string;
+  lastActivityAt: string;
+}
+
 // Third-party packs in large card corpora frequently republish the same
 // card text as official packs or as each other. Comparing trimmed/lowercased
 // text (rather than card id) is what actually catches those duplicates.
@@ -216,6 +247,30 @@ export class Room {
 
   private phaseTimer: NodeJS.Timeout | null = null;
   lastActivityAt = Date.now();
+  readonly createdAt = Date.now();
+
+  /** Bar Games session kind. "patron" for every room a phone or Table
+   * creates (and every room standalone); "venue" only for rooms the box
+   * creates with create_room - see RoomManager.createVenueRoom. */
+  kind: SessionKind = "patron";
+  title: string | undefined;
+  /** Venue rooms only: the secret in the box's "host controls" link. A
+   * Table joining with it becomes a venue controller (host authority, no
+   * seat). Null for every other room, so the key path can't exist there. */
+  venueKey: string | null = null;
+
+  /** Set by RoomManager to report lifecycle moments to a Bar Games box
+   * (a no-op standalone). Kept as a plain hook so Room has no SDK import. */
+  onGameEvent: ((type: RoomGameEvent, data: Record<string, unknown>) => void) | null = null;
+  private lastStartedRound = 0;
+
+  private notify(type: RoomGameEvent, data: Record<string, unknown> = {}): void {
+    try {
+      this.onGameEvent?.(type, data);
+    } catch (err) {
+      log.warn("room", "game event hook failed", { code: this.code, type, err: String(err) });
+    }
+  }
 
   /** Set by RoomManager. Called when a phase timer throws - socket-driven
    * actions are already wrapped by withRoom (see server/src/socket), but a
@@ -236,7 +291,8 @@ export class Room {
     name: string,
     role: Role,
     token: string | undefined,
-    socketId: string
+    socketId: string,
+    venueKey?: string
   ): { player: ServerPlayer; token: string; reconnected: boolean } {
     if (token) {
       const existing = [...this.players.values()].find((p) => p.token === token);
@@ -274,7 +330,14 @@ export class Room {
     // hand and never enters the rotation) — so a Table that creates a room
     // before anyone else joins must not claim host, and must not block the
     // first real player from claiming it afterward.
-    const isHost = role === "player" && ![...this.players.values()].some((p) => p.role === "player");
+    //
+    // Venue rooms (Bar Games) are the exception: nobody is promoted to host
+    // just by arriving first - at a bar that would hand a random patron the
+    // power to close the room or kick people. Host authority there comes
+    // from the box's commands and a keyed controller screen instead.
+    const isHost =
+      this.kind !== "venue" && role === "player" && ![...this.players.values()].some((p) => p.role === "player");
+    const isVenueController = role === "table" && !!this.venueKey && venueKey === this.venueKey;
     const player: ServerPlayer = {
       id,
       token: newToken,
@@ -283,6 +346,7 @@ export class Room {
       socketId,
       connected: true,
       isHost,
+      ...(isVenueController ? { isVenueController: true } : {}),
       hand: [],
       score: 0,
       wonBlackCards: [],
@@ -318,6 +382,7 @@ export class Room {
     }
 
     this.lastActivityAt = Date.now();
+    if (role === "player") this.notify("players_changed");
     return { player, token: newToken, reconnected: false };
   }
 
@@ -379,6 +444,7 @@ export class Room {
       throw new RoomError("NOT_A_PLAYER", "Only a player can take over as host.");
     }
     if (claimant.isHost) return;
+    if (this.kind === "venue") throw new RoomError("VENUE_ROOM", "This room is run by the venue - there's no host to take over.");
 
     const claimableAt = this.hostClaimableSince();
     if (claimableAt === null) throw new RoomError("HOST_PRESENT", "The host is still connected.");
@@ -421,6 +487,35 @@ export class Room {
    * since pack ids are just array indices into whichever set is loaded. */
   getCardData(): LoadedCardData {
     return this.cardData;
+  }
+
+  /** Real players only - not Tables, not the Wild Card bot. */
+  playerCount(): number {
+    return [...this.players.values()].filter((p) => p.role === "player" && !p.isWildCard).length;
+  }
+
+  /** Shared Screens connected right now (cast TVs included). A venue room
+   * isn't idle-closed while one is showing it. */
+  tableCount(): number {
+    return [...this.players.values()].filter((p) => p.role === "table" && p.connected).length;
+  }
+
+  toOverview(): RoomOverview {
+    const host = [...this.players.values()].find((p) => p.isHost);
+    const controllers = [...this.players.values()].filter((p) => p.isVenueController);
+    return {
+      code: this.code,
+      kind: this.kind,
+      players: this.playerCount(),
+      phase: this.phase,
+      ...(this.title ? { title: this.title } : {}),
+      // A venue room has no player host; its "host" is the staff controller.
+      hostConnected: host ? host.connected : controllers.some((c) => c.connected),
+      ...(host ? { hostName: host.name } : {}),
+      tables: this.tableCount(),
+      createdAt: new Date(this.createdAt).toISOString(),
+      lastActivityAt: new Date(this.lastActivityAt).toISOString(),
+    };
   }
 
   getAdminSummary() {
@@ -511,6 +606,7 @@ export class Room {
       throw new RoomError("CANT_HOST_TABLE", "The Shared Screen can't be host — it doesn't hold cards or take a turn.");
     }
     if (target.id === actor.id) return;
+    if (this.kind === "venue") throw new RoomError("VENUE_ROOM", "This room is run by the venue - it doesn't have a player host.");
     actor.isHost = false;
     target.isHost = true;
     this.broadcast();
@@ -547,6 +643,7 @@ export class Room {
 
     const wasHost = player.isHost;
     this.players.delete(playerId);
+    if (player.role === "player" && !player.isWildCard) this.notify("players_changed");
 
     if (wasHost) {
       const candidates = [...this.players.values()].filter((p) => !p.isWildCard);
@@ -558,11 +655,31 @@ export class Room {
   // ---------- Lobby configuration ----------
 
   requireHost(playerId: string): ServerPlayer {
+    if (playerId === VENUE_ACTOR_ID) return this.venueActor;
     const player = this.players.get(playerId);
     if (!player) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
-    if (!player.isHost) throw new RoomError("NOT_HOST", "Only the host can do that.");
+    if (!hasHostAuthority(player)) throw new RoomError("NOT_HOST", "Only the host can do that.");
     return player;
   }
+
+  /** Who a Bar Games box command acts as: the room's host, without being a
+   * seat. Never in `players`, so it has no hand, no Judge turn and no
+   * scoreboard line, and no socket can ever claim its id (socket player ids
+   * come from the server's own join). */
+  private readonly venueActor: ServerPlayer = {
+    id: VENUE_ACTOR_ID,
+    token: "",
+    name: "Venue",
+    role: "table",
+    socketId: null,
+    connected: true,
+    isHost: true,
+    hand: [],
+    score: 0,
+    wonBlackCards: [],
+    personalCards: [],
+    personalDeck: [],
+  };
 
   /** Game-options settings (packs/house rules/table style) are shared authority
    * between the host and the Table — an operator standing at the shared screen
@@ -572,9 +689,15 @@ export class Room {
    * authorise an action whose side effects live outside the Room (saving a
    * preset to the shared on-disk store). */
   requireLobbyAuthority(playerId: string): ServerPlayer {
+    if (playerId === VENUE_ACTOR_ID) return this.venueActor;
     const player = this.players.get(playerId);
     if (!player) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
-    if (!player.isHost && player.role !== "table") {
+    // Venue rooms: a Table is usually a cast TV - or a patron who opened
+    // ?role=table themselves - so only the keyed controller gets settings.
+    if (this.kind === "venue" && !hasHostAuthority(player)) {
+      throw new RoomError("NOT_HOST", "This room is run by the venue - ask staff to change its settings.");
+    }
+    if (!hasHostAuthority(player) && player.role !== "table") {
       throw new RoomError("NOT_HOST", "Only the host or the Shared Screen can do that.");
     }
     return player;
@@ -1054,7 +1177,7 @@ export class Room {
     const player = this.players.get(playerId);
     if (!player) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
     const isJudge = player.id === this.currentJudgeId();
-    if (!player.isHost && !isJudge) {
+    if (!hasHostAuthority(player) && !isJudge) {
       throw new RoomError("NOT_HOST", `Only the host or the ${this.roleNames.judge} can skip the black card.`);
     }
     if (this.phase !== "submission") {
@@ -1079,7 +1202,7 @@ export class Room {
     const player = this.players.get(playerId);
     if (!player) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
     const isJudge = player.id === this.currentJudgeId();
-    if (!player.isHost && !isJudge) {
+    if (!hasHostAuthority(player) && !isJudge) {
       throw new RoomError("NOT_HOST", `Only the host or the current ${this.roleNames.judge} can skip the ${this.roleNames.judge}'s turn.`);
     }
     if (this.phase !== "submission" && this.phase !== "reveal" && this.phase !== "judging") {
@@ -1354,6 +1477,11 @@ export class Room {
   private dealPhase(): void {
     this.phase = "dealing";
     this.dealtAt = Date.now();
+    // A redeal of the same round (Judge kicked or skipped) isn't a new round.
+    if (this.roundsPlayed + 1 !== this.lastStartedRound) {
+      this.lastStartedRound = this.roundsPlayed + 1;
+      this.notify("round_started", { round: this.lastStartedRound });
+    }
 
     // Card Block (see playActionCard): staged against a future round when
     // played, becomes active for exactly the round now starting, and is
@@ -1966,7 +2094,7 @@ export class Room {
     if (!sender) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
     const isJudge = sender.id === this.currentJudgeId();
     const isTableMirror = sender.role === "table";
-    if (!isJudge && !isTableMirror && !sender.isHost) {
+    if (!isJudge && !isTableMirror && !hasHostAuthority(sender)) {
       throw new RoomError("NOT_JUDGE", `Only the ${this.roleNames.judge}, the host, or the Shared Screen can do that.`);
     }
     const next = Math.round((this.tableScale + delta) * 100) / 100;
@@ -2152,6 +2280,7 @@ export class Room {
     this.roundsPlayed += 1;
     if (this.roundHistory.length > 100) this.roundHistory.length = 100;
     this.phase = "roundEnd";
+    this.notify("winner", { name: winner.name, round: this.roundsPlayed });
     this.broadcast();
 
     this.clearTimer();
@@ -2177,6 +2306,7 @@ export class Room {
         this.finalResult = this.buildFinalResult();
         this.phase = "gameEnd";
       } else {
+        this.notify("round_ended", { round: this.roundsPlayed });
         this.judgeIndex = (this.judgeIndex + 1) % this.judgeOrder.length;
         this.dealPhase();
         return;
@@ -2202,6 +2332,7 @@ export class Room {
       topScore,
       rounds: this.roundHistory.length,
     });
+    this.notify("game_over", { winners: winners.map((p) => p.name) });
     return {
       winnerPlayerIds: winners.map((p) => p.id),
       winnerNames: winners.map((p) => p.name),
@@ -2295,7 +2426,7 @@ export class Room {
         id: viewer.id,
         role: viewer.role,
         isJudge: viewer.id === judgeId,
-        isHost: viewer.isHost,
+        isHost: hasHostAuthority(viewer),
       },
     };
 

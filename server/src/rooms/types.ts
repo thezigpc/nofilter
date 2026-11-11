@@ -12,6 +12,10 @@ export interface ServerPlayer {
    * claim host (see Room.claimHost). */
   disconnectedAt?: number | null;
   isHost: boolean;
+  /** Venue rooms only (Bar Games): a Table that joined with the room's
+   * venue key - the staff iPad opened from the box's "host controls" link.
+   * Holds host authority without being a seat (no hand, no Judge turn). */
+  isVenueController?: boolean;
   isWildCard?: boolean;
   hand: WhiteCard[];
   score: number;
