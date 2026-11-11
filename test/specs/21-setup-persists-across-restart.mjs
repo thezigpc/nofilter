@@ -21,7 +21,7 @@ export const name = "A password chosen through setup survives a real process res
  * A wrote.
  */
 export default async function () {
-  const sharedDir = mkdtempSync(path.join(tmpdir(), "cah-restart-test-"));
+  const sharedDir = mkdtempSync(path.join(tmpdir(), "nofilter-restart-test-"));
   const hashPath = path.join(sharedDir, "admin-password.json");
 
   let first;

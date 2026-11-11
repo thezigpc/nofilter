@@ -255,7 +255,7 @@
 
   <p class="kicker">System design — draft</p>
   <h1>Tabletop Judge</h1>
-  <p class="dek">A phone-and-shared-screen build of Cards Against Humanity: a host server, room codes, phones as hands, and an optional shared display for the table.</p>
+  <p class="dek">A phone-and-shared-screen fill-in-the-blank party card game: a host server, room codes, phones as hands, and an optional shared display for the table.</p>
 
   <hr class="divider">
 
@@ -307,14 +307,14 @@
   <hr class="divider">
 
   <h2>Card data</h2>
-  <p class="section-note">Built from the supplied <code>cah-cards-full.json</code> — 427 packs, official CAH plus third-party.</p>
+  <p class="section-note">Built from a supplied card corpus JSON file — 427 packs, official plus third-party.</p>
 
   <p>The source file is an array of packs, each with a name, an official/third-party flag, and its own white and black cards:</p>
 
   <pre>[{
-  "name": "Cards Against Humanity: Big Bad Bundle",
+  "name": "Example Pack",
   "official": true,
-  "sheetName": "CAH A Few Extra",
+  "sheetName": "Example Pack",
   "white": [
     { "text": "My private island.", "pack": "107" }
   ],
@@ -341,7 +341,7 @@
   </div>
 
   <h3>Deck build is per-room, not global</h3>
-  <p>At room creation, the host is shown the pack list (name, official/third-party, card counts) and checks which ones to include — an "official only" shortcut plus the ability to add specific third-party packs. The server merges the selected packs' white and black cards into that room's deck at start time. Swapping or upgrading <code>cah-cards-full.json</code> later just changes what shows up in the picker; it isn't wired into any client code.</p>
+  <p>At room creation, the host is shown the pack list (name, official/third-party, card counts) and checks which ones to include — an "official only" shortcut plus the ability to add specific third-party packs. The server merges the selected packs' white and black cards into that room's deck at start time. Swapping or upgrading the card file later just changes what shows up in the picker; it isn't wired into any client code.</p>
 
   <hr class="divider">
 
@@ -420,7 +420,7 @@
 
   <ul>
     <li><strong>Tunnel, not port forwarding:</strong> <code>cloudflared</code> runs on the same machine as the Node server and makes an outbound connection to Cloudflare — no router port forwarding, no exposed home IP. Cloudflare terminates TLS at the edge.</li>
-    <li><strong>Setup shape:</strong> authenticate <code>cloudflared</code> against the Cloudflare account, create a named tunnel, point a subdomain at it with <code>cloudflared tunnel route dns</code> (e.g. <code>cah.yourdomain.com</code>), and give the tunnel a small config file mapping that hostname to the local Node port. Running it as a service (<code>cloudflared service install</code>) keeps it up across reboots.</li>
+    <li><strong>Setup shape:</strong> authenticate <code>cloudflared</code> against the Cloudflare account, create a named tunnel, point a subdomain at it with <code>cloudflared tunnel route dns</code> (e.g. <code>cards.yourdomain.com</code>), and give the tunnel a small config file mapping that hostname to the local Node port. Running it as a service (<code>cloudflared service install</code>) keeps it up across reboots.</li>
     <li><strong>WebSockets just work:</strong> Cloudflare Tunnel proxies the Upgrade handshake through to origin with no special config — Socket.io traffic passes through the same as plain HTTP.</li>
     <li><strong>URL stays open, no Cloudflare Access:</strong> the join screen is reachable by anyone with the link — no login wall in front of it, so a friend can tap the link and go straight to typing a room code. That shifts the actual security burden onto the room code itself:
       <ul>

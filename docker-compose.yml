@@ -11,7 +11,7 @@
 services:
   app:
     build: .
-    container_name: cah-app
+    container_name: nofilter-app
     restart: unless-stopped
     ports:
       - "127.0.0.1:3001:3001"

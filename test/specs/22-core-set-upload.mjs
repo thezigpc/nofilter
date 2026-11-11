@@ -32,7 +32,7 @@ export default async function ({ server: lockedServer }) {
 
   // --- A dedicated instance with CARD_DATA_PATH unset, so it falls
   // through to the bundled sample / an uploaded Core Set instead.
-  const dataDir = mkdtempSync(path.join(tmpdir(), "cah-coreset-test-"));
+  const dataDir = mkdtempSync(path.join(tmpdir(), "nofilter-coreset-test-"));
   let unlocked;
   try {
     unlocked = await startServer({

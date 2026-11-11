@@ -87,7 +87,7 @@ import { ACTION_CARD_TIER_WEIGHTS, HAND_SIZE, HOST_CLAIM_AFTER_SECONDS, ROUND_EN
 
 type IO = Server<ClientToServerEvents, ServerToClientEvents>;
 
-// Third-party packs in cah-cards-full.json frequently republish the same
+// Third-party packs in large card corpora frequently republish the same
 // card text as official packs or as each other. Comparing trimmed/lowercased
 // text (rather than card id) is what actually catches those duplicates.
 function dedupeByText<T extends { text: string }>(cards: T[]): T[] {

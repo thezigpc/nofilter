@@ -41,11 +41,11 @@ export async function waitFor(fn, { timeout = 8000, interval = 50, label = "cond
  * Requires `npm run build` to have been run first (the runner checks).
  */
 export async function startServer({ port = DEFAULT_PORT, env = {} } = {}) {
-  const dataDir = mkdtempSync(path.join(tmpdir(), "cah-test-"));
+  const dataDir = mkdtempSync(path.join(tmpdir(), "nofilter-test-"));
   // The real card file is large; reuse it read-only rather than copying.
-  const cardPath = process.env.TEST_CARD_DATA_PATH ?? path.join(PROJECT_ROOT, "cah-cards-full.json");
+  const cardPath = process.env.TEST_CARD_DATA_PATH ?? path.join(PROJECT_ROOT, "cards-full.json");
   if (!existsSync(cardPath)) {
-    throw new Error(`Card data not found at ${cardPath}. Set TEST_CARD_DATA_PATH to point at cah-cards-full.json.`);
+    throw new Error(`Card data not found at ${cardPath}. Set TEST_CARD_DATA_PATH to point at a full card corpus JSON file.`);
   }
 
   const child = spawn(process.execPath, ["server/dist/index.js"], {
@@ -267,7 +267,7 @@ export async function ensureActionCard(room, defId, opts = {}) {
 }
 
 /** Selects all "Official" packs so Start Game is allowed - the test corpus
- * is an old-schema file (cah-cards-full.json), so its `official: true`
+ * is an old-schema file (cards-full.json), so its `official: true`
  * packs resolve to category "Official" via loader.ts's legacy fallback. */
 export async function selectOfficialPacks(host) {
   host.emit("updatePackSelection", { packIds: host.state.packs.filter((p) => p.category === "Official").map((p) => p.id) });

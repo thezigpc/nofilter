@@ -25,7 +25,7 @@ Thumbs.db
 # below) is what a fresh install actually ships with; this file, if present
 # locally, is picked up via the CARD_DATA_PATH env var or uploaded as a Core
 # Set through the admin panel instead - see server/src/cards/coreSet.ts.
-cah-cards-full.json
+cards-full.json
 
 # docker-compose.yml's bind-mounted data directory (VM-only, holds the
 # same runtime JSON files listed above plus whatever else lands in /data).

@@ -12,8 +12,8 @@ export interface RawPack {
   name: string;
   /** Freeform section label - see PackSummary.category. */
   category?: string;
-  /** Legacy field from the old CAH-specific schema. Only consulted as a
-   * fallback when `category` is absent, so an old cah-cards-full.json-style
+  /** Legacy field from the older pack schema. Only consulted as a
+   * fallback when `category` is absent, so an older-schema corpus file
    * file still groups sensibly without needing to be edited - see
    * resolveCategory() below. */
   official?: boolean;

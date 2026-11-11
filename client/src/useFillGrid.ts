@@ -11,7 +11,7 @@ const MIN_CARD_W = 100;
 const MIN_CARD_H = 90;
 const GAP = 10;
 const MAX_CARD_ASPECT = 1.3;
-// Card Mode: portrait proportions close to a real CAH card (2.5:3.5),
+// Card Mode: portrait proportions close to a standard poker-size playing card (2.5:3.5),
 // instead of capping how much WIDER than tall a card can get. Validated in
 // an interactive mockup against the same computeFit search below -
 // swapping just this constant was enough, the fitting search already picks
