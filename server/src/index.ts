@@ -221,11 +221,3 @@ installShutdown(roomManager.registry, {
   beforeExit: () => new Promise<void>((resolve) => io.close(() => resolve())),
   log,
 });
-
-// The kit logs a crash's message; keep the full stack in the error log too,
-// since that's what a crash report actually needs.
-const logStack = (err: unknown) => {
-  if (err instanceof Error && err.stack) console.error(err.stack);
-};
-process.on("uncaughtException", logStack);
-process.on("unhandledRejection", logStack);
