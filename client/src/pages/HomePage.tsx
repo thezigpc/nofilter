@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { normalizeRoomCode, DEFAULT_TABLE_STYLE } from "@tabletop-judge/shared";
 import Changelog from "../components/Changelog.js";
+import { BackToGames } from "@bargames/gamekit/client";
+import { useVenueContext } from "../useVenue.js";
 import { DEFAULT_GAME_NAME, fetchPublicConfig } from "../publicConfig.js";
 import { themeAttrs } from "../useThemeAttrs.js";
 
@@ -35,6 +37,7 @@ export default function HomePage() {
     if (code) navigate(`/room/${code}`);
   }
 
+  const venue = useVenueContext();
   const theming = themeAttrs(theme, accentIndex);
 
   return (
@@ -118,6 +121,8 @@ export default function HomePage() {
       </div>
 
       <Changelog />
+      {/* Bar Games box only: back to the venue's games list. */}
+      <BackToGames ctx={venue} />
     </div>
   );
 }

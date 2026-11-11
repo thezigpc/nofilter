@@ -5,8 +5,8 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 | | |
 |---|---|
 | Level | **3** (branded, events, commands and status, plus casting from the host screen) |
-| SDK | `@bargames/sdk` 0.3.0, vendored at `vendor/bargames-sdk-0.3.0.tgz` |
-| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.0.0`, port 3001 |
+| SDK | `@bargames/sdk` 0.4.0, vendored at `vendor/bargames-sdk-0.4.0.tgz` (with `@bargames/gamekit` 0.3.0) |
+| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.1.0`, port 3001 |
 | Box wiring | [`server/src/bargames.ts`](server/src/bargames.ts) (the only file that talks to the SDK on the server) |
 | Tests | `test/specs/33-bargames-standalone.mjs`, `test/specs/34-bargames-box.mjs` (the second runs a fake box core in-process) |
 
@@ -15,7 +15,7 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 Run against the SDK's mock box (`npx bargames mock-box . --game http://127.0.0.1:3101`, game on port 3101 with `BG_GAME_ID=nofilter BG_CORE_URL=http://127.0.0.1:7199 BG_GAME_TOKEN=dev-token DATA_DIR=<tmp>`):
 
 ```
-nofilter@1.0.0 · level 3 · http://127.0.0.1:3101
+nofilter@1.1.0 · level 3 · http://127.0.0.1:3101
 ✓ health /health → 200
 ✓ /__bargames/venue.json returns the box's branding ("No Filter (mock)")
 ✓ /__bargames/theme.css served
@@ -103,8 +103,17 @@ Standalone none of this exists: `venueKey` is null on every normal room, so a ke
 | `hostName` | phone rooms only |
 | `tables` | connected Tables |
 | `createdAt`, `lastActivityAt` | ISO times |
+| `joinPath` | `/room/{code}`, the join screen (name and role). The venue's games list links its **Join** button here |
 
 There's no `maxPlayers`: rooms have no player cap. Rooms are listed most recently active first.
+
+## The venue around the game (SDK 0.4.0)
+
+Both come from the game kit and render nothing off a box.
+
+- **"← All games"** (`<BackToGames />`): at the very bottom of the landing page ([`HomePage.tsx`](client/src/pages/HomePage.tsx)) and nowhere else, with "Also playing: …" under it.
+- **Staff announcements** (`<VenueAnnouncement />`): one sticky strip at the app root ([`App.tsx`](client/src/App.tsx)), on every phone page. Shared Screens never show it: a `role=table` URL and the Template Editor's preview frame are skipped by URL, and a joined Table reports itself through `useIsSharedScreen` (a Table made with "Set up the Shared Screen" sits on a plain `/room/{code}`).
+- The venue context is polled every 30 s ([`useVenue.ts`](client/src/useVenue.ts)).
 
 ## Table (TV) view: `/room/{code}?role=table&display=1`
 
@@ -195,7 +204,7 @@ Off a box: `enabled: false` and no network call (spec 33).
 
 ## The image
 
-- **Name:** `ghcr.io/thezigpc/nofilter:1.0.0`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet).
+- **Name:** `ghcr.io/thezigpc/nofilter:1.1.0`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet). A new repo's first publish needs a manual run of the workflow.
 - **Not published yet:** this repository has **no GitHub remote**. Publishing needs the user to:
   1. create the repo;
   2. push `main` (the workflow runs when `bargames.json` changes);

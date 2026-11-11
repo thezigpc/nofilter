@@ -81,6 +81,7 @@ export default async function () {
     const v = rooms.find((r) => r.code === code);
     assert(v, "status lists the venue room");
     assertEqual(v.kind, "venue", "kind venue");
+    assertEqual(v.joinPath, `/room/${code}`, "status says where a new player joins");
     assertEqual(v.title, "Friday Night", "title carried through");
     assertEqual(v.players, 0, "no players yet");
     assert(!Number.isNaN(Date.parse(v.createdAt)) && !Number.isNaN(Date.parse(v.lastActivityAt)), "ISO times");

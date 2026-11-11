@@ -65,6 +65,8 @@ export class RoomManager {
       codeLength: ROOM_CODE_LENGTH,
       codeAlphabet: ROOM_CODE_ALPHABET,
       normalizeCode: normalizeRoomCode,
+      // The join screen (name + role). The box's games list links here.
+      joinPath: (room) => `/room/${room.code}`,
       log,
     });
   }

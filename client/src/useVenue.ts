@@ -21,10 +21,62 @@ export function useVenueBranding(): void {
           applyTheme(ctx); // sets --venue-* on <html>
           for (const fn of listeners) fn(ctx);
         },
-        { base: serverUrl || undefined } // the client runs on Vite's own port in dev
+        // The client runs on Vite's own port in dev. 30 s, so a staff
+        // announcement typed on the box shows up quickly.
+        { base: serverUrl || undefined, intervalMs: 30_000 }
       ),
     []
   );
+}
+
+/**
+ * The live venue context, for the kit's <BackToGames /> and
+ * <VenueAnnouncement />. Stays null standalone, where both render nothing.
+ */
+export function useVenueContext(): VenueContext | null {
+  const [ctx, setCtx] = useState(current);
+  useEffect(() => {
+    setCtx(current);
+    listeners.add(setCtx);
+    return () => {
+      listeners.delete(setCtx);
+    };
+  }, []);
+  return ctx;
+}
+
+// Shared screens never show the staff announcement strip (the box puts
+// announcements on its TVs itself). A Table's URL doesn't always say it is
+// one - "Set up the Table" lands on a plain /room/CODE - so the room page
+// reports it here once it knows its role.
+let sharedScreens = 0;
+const sharedScreenListeners = new Set<() => void>();
+
+/** Call from a page that is (or may become) a shared screen. */
+export function useIsSharedScreen(isShared: boolean): void {
+  useEffect(() => {
+    if (!isShared) return;
+    sharedScreens++;
+    for (const fn of sharedScreenListeners) fn();
+    return () => {
+      sharedScreens--;
+      for (const fn of sharedScreenListeners) fn();
+    };
+  }, [isShared]);
+}
+
+/** True while a mounted page has said it's a shared screen. */
+export function useSharedScreenActive(): boolean {
+  const [active, setActive] = useState(sharedScreens > 0);
+  useEffect(() => {
+    const fn = () => setActive(sharedScreens > 0);
+    fn();
+    sharedScreenListeners.add(fn);
+    return () => {
+      sharedScreenListeners.delete(fn);
+    };
+  }, []);
+  return active;
 }
 
 /** True only on a Bar Games box (never standalone). */

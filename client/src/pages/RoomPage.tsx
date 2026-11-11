@@ -6,7 +6,7 @@ import { socket } from "../socket.js";
 import { clearSession, loadSession, saveSession } from "../session.js";
 import { fetchPublicConfig } from "../publicConfig.js";
 import { themeAttrs } from "../useThemeAttrs.js";
-import { useTableDisplay } from "../useVenue.js";
+import { useIsSharedScreen, useTableDisplay } from "../useVenue.js";
 import CastTvsControl from "../components/CastTvsControl.js";
 import { blackCardLengthScale, formatBlackCardText } from "../blackCardText.js";
 import Lobby from "../components/Lobby.js";
@@ -275,6 +275,8 @@ export default function RoomPage() {
   }
 
   const isTable = state?.you.role === "table";
+  // Keeps the venue's announcement strip off a Shared Screen (App.tsx).
+  useIsSharedScreen(isTable);
   const pageRef = useRef<HTMLDivElement>(null);
   const [autoFitZoom, setAutoFitZoom] = useState<number | null>(null);
   const [tableMaxWidth, setTableMaxWidth] = useState<number | null>(null);
