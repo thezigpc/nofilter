@@ -48,7 +48,7 @@ export default async function ({ baseUrl }) {
     await waitForDeal(room);
 
     const holder = await waitFor(
-      () => room.host.state.players.find((p) => !p.isRando && p.wonBlackCardCount > 0),
+      () => room.host.state.players.find((p) => !p.isWildCard && p.wonBlackCardCount > 0),
       { label: "someone to hold a won black card" }
     );
     const scoreBefore = holder.score;

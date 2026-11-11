@@ -1,6 +1,9 @@
 import {
   BACKGROUND_STYLES,
   DEFAULT_GAME_NAME,
+  DEFAULT_ROLE_NAMES,
+  normalizeRoleNames,
+  type RoleNames,
   DEFAULT_TABLE_STYLE,
   TABLE_THEME_LABELS,
   type BackgroundStyle,
@@ -12,6 +15,8 @@ export { DEFAULT_GAME_NAME };
 
 export interface PublicConfig {
   gameName: string;
+  /** What new rooms call the Judge and the Wild Card bot. */
+  defaultRoleNames: RoleNames;
   /** True while this server still has no admin password - see the
    * HomePage's setup warning and server/src/admin/auth.ts. */
   setupNeeded: boolean;
@@ -28,6 +33,7 @@ export interface PublicConfig {
 
 const FALLBACK: PublicConfig = {
   gameName: DEFAULT_GAME_NAME,
+  defaultRoleNames: DEFAULT_ROLE_NAMES,
   setupNeeded: false,
   defaultTheme: DEFAULT_TABLE_STYLE.theme,
   defaultAccentIndex: DEFAULT_TABLE_STYLE.accentIndex,
@@ -48,6 +54,7 @@ export async function fetchPublicConfig(): Promise<PublicConfig> {
     if (!res.ok) return FALLBACK;
     const data = (await res.json()) as {
       gameName?: unknown;
+      defaultRoleNames?: unknown;
       setupNeeded?: unknown;
       defaultTheme?: unknown;
       defaultAccentIndex?: unknown;
@@ -58,6 +65,7 @@ export async function fetchPublicConfig(): Promise<PublicConfig> {
     };
     return {
       gameName: typeof data.gameName === "string" && data.gameName ? data.gameName : DEFAULT_GAME_NAME,
+      defaultRoleNames: normalizeRoleNames(data.defaultRoleNames),
       setupNeeded: data.setupNeeded === true,
       defaultTheme:
         typeof data.defaultTheme === "string" && data.defaultTheme in TABLE_THEME_LABELS
@@ -110,4 +118,9 @@ export function setDefaultTheme(next: {
   facedownOpacity?: number;
 }> {
   return new Promise((resolve) => socket.emit("setDefaultTheme", next, resolve));
+}
+
+/** Admin-only - the Judge/Wild Card names every new room starts with. */
+export function setDefaultRoleNames(roleNames: RoleNames): Promise<{ ok: boolean; error?: string; roleNames?: RoleNames }> {
+  return new Promise((resolve) => socket.emit("setDefaultRoleNames", { roleNames }, resolve));
 }

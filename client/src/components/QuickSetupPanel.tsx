@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { GameSetupPreset, RoomStateForClient } from "@tabletop-judge/shared";
-import { BUILT_IN_GAME_SETUPS } from "@tabletop-judge/shared";
+import { BUILT_IN_GAME_SETUPS, fillRoleNames } from "@tabletop-judge/shared";
 import { socket } from "../socket.js";
 import { CloseCircleIcon } from "./Icons.js";
 import TextPromptModal from "./TextPromptModal.js";
@@ -75,7 +75,7 @@ export default function QuickSetupPanel({
             onClick={() => applyBuiltIn(setup.id)}
           >
             <span className="setup-name">{setup.name}</span>
-            <span className="setup-desc">{setup.description}</span>
+            <span className="setup-desc">{fillRoleNames(setup.description, state.roleNames)}</span>
           </button>
         ))}
       </div>

@@ -11,6 +11,7 @@ import { isValidToken, setupNeeded } from "./admin/auth.js";
 import { initCustomCards } from "./customCards/store.js";
 import { initCustomSets } from "./customSets/store.js";
 import { getGameName, initGameName } from "./gameName/store.js";
+import { getDefaultRoleNames, initRoleNames } from "./roleNames/store.js";
 import { getDefaultTheme, initDefaultTheme } from "./tableStyle/store.js";
 import { RoomManager } from "./rooms/RoomManager.js";
 import { registerSocketHandlers } from "./socket/index.js";
@@ -26,6 +27,7 @@ await initCustomCards();
 await initCustomSets();
 await initGameName();
 await initDefaultTheme();
+await initRoleNames();
 
 const app = express();
 app.use(cors({ origin: CLIENT_ORIGIN }));
@@ -48,6 +50,9 @@ app.get("/api/config", async (_req, res) => {
   const defaultTheme = getDefaultTheme();
   res.json({
     gameName: getGameName(),
+    // What the Judge and the Wild Card bot are called by default (see
+    // server/src/roleNames/store.ts). The admin page reads it to prefill.
+    defaultRoleNames: getDefaultRoleNames(),
     setupNeeded: await setupNeeded(),
     // What HomePage, Card Management and /admin render with - those pages
     // have no room of their own to inherit a look from, so they use

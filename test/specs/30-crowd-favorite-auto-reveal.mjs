@@ -1,17 +1,17 @@
 import { makeRoom, selectOfficialPacks, waitFor, waitForDeal, assert } from "../harness.mjs";
 
-export const name = "Crowd Favorite: every voter sees the lineup revealed immediately, with no Czar reveal step";
+export const name = "Crowd Favorite: every voter sees the lineup revealed immediately, with no Judge reveal step";
 
 /**
  * Regression test for a real bug: moveToReveal() always landed in the
  * face-down "reveal" phase and left flipping cards face-up gated behind
- * requireJudgeAuthority (Czar/Table only) - even in a voting round, where
- * the design intent is explicitly "No Card Czar in this mode" (see
+ * requireJudgeAuthority (Judge/Table only) - even in a voting round, where
+ * the design intent is explicitly "No Judge in this mode" (see
  * Room.ts's isVotingRound doc comment). That left whichever player the
- * czar rotation still happened to point at as the sole person able to
+ * judge rotation still happened to point at as the sole person able to
  * reveal cards for everyone else to vote on, and everyone else stuck
  * staring at face-down cards until that one player acted - reported
- * directly as "the card czar still has control over what cards get
+ * directly as "the card judge still has control over what cards get
  * displayed" in a Crowd Favorite/Democracy round.
  */
 export default async function ({ baseUrl }) {
@@ -39,21 +39,21 @@ export default async function ({ baseUrl }) {
     // anyone ever calling revealSubmission.
     await waitFor(() => room.host.state.phase === "judging", { label: "phase to reach judging on its own" });
 
-    const nonCzarVoter = room.clients.find((c) => c.me && !c.me.isCzar);
-    const board = nonCzarVoter.state.judgingBoard ?? [];
+    const nonJudgeVoter = room.clients.find((c) => c.me && !c.me.isJudge);
+    const board = nonJudgeVoter.state.judgingBoard ?? [];
     assert(board.length > 0, "judging board should be populated");
     assert(
       board.every((s) => s.revealed === true && Array.isArray(s.cards)),
-      "every slot should already be revealed and visible to a non-Czar voter, with zero manual reveals"
+      "every slot should already be revealed and visible to a non-Judge voter, with zero manual reveals"
     );
 
-    // A non-czar player can vote immediately - no prior reveal action from
-    // the czar was needed.
-    const myChoice = board.find((s) => s.submissionId !== nonCzarVoter.state.yourSubmissionId);
-    const errorsBefore = nonCzarVoter.errors.length;
-    nonCzarVoter.emit("voteForSubmission", { submissionId: myChoice.submissionId });
-    await waitFor(() => nonCzarVoter.state.yourVote === myChoice.submissionId, { label: "the vote to register" });
-    assert(nonCzarVoter.errors.length === errorsBefore, "voting should not be refused");
+    // A non-judge player can vote immediately - no prior reveal action from
+    // the judge was needed.
+    const myChoice = board.find((s) => s.submissionId !== nonJudgeVoter.state.yourSubmissionId);
+    const errorsBefore = nonJudgeVoter.errors.length;
+    nonJudgeVoter.emit("voteForSubmission", { submissionId: myChoice.submissionId });
+    await waitFor(() => nonJudgeVoter.state.yourVote === myChoice.submissionId, { label: "the vote to register" });
+    assert(nonJudgeVoter.errors.length === errorsBefore, "voting should not be refused");
   } finally {
     room.closeAll();
   }

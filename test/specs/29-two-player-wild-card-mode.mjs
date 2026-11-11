@@ -1,12 +1,12 @@
 import { makeRoom, selectOfficialPacks, ensureActionCard, waitFor, wait, assert, assertEqual } from "../harness.mjs";
 
-export const name = "Rando Cardrissian lowers the floor to 2 real players, for starting and for staying alive";
+export const name = "Wild Card lowers the floor to 2 real players, for starting and for staying alive";
 
 /**
- * minPlayersToStart() already returned 2 with Rando on before this change -
+ * minPlayersToStart() already returned 2 with Wild Card on before this change -
  * what was missing was the *continuing* side: minPlayersToContinue() (née
- * the flat MIN_PLAYERS_TO_CONTINUE=3 constant) didn't know about Rando at
- * all, so a 3-real-player Rando game that lost one player to a leave was
+ * the flat MIN_PLAYERS_TO_CONTINUE=3 constant) didn't know about Wild Card at
+ * all, so a 3-real-player Wild Card game that lost one player to a leave was
  * force-ended even though a brand new room could have started fresh at 2
  * with the same rules on. Also covers Democracy's new minRealPlayers floor
  * (a vote needs an actual electorate) - it's filtered out of the deck at
@@ -14,24 +14,24 @@ export const name = "Rando Cardrissian lowers the floor to 2 real players, for s
  * depth) if a leave drops below 3 after it was already dealt.
  */
 export default async function ({ baseUrl }) {
-  // --- Part 1: 2 real players + Rando can start at all.
+  // --- Part 1: 2 real players + Wild Card can start at all.
   const room1 = await makeRoom(baseUrl, ["Alice", "Bob"]);
   try {
     await selectOfficialPacks(room1.host);
-    room1.host.emit("updateHouseRules", { houseRules: { randoCardrissian: true } });
-    await waitFor(() => room1.host.state.houseRules.randoCardrissian, { label: "Rando to be enabled" });
+    room1.host.emit("updateHouseRules", { houseRules: { wildCard: true } });
+    await waitFor(() => room1.host.state.houseRules.wildCard, { label: "Wild Card to be enabled" });
 
     room1.host.emit("startGame");
     await room1.host.waitForPhase("submission");
     assert(
-      room1.host.state.players.some((p) => p.isRando),
-      "Rando should have joined the rotation once the game started"
+      room1.host.state.players.some((p) => p.isWildCard),
+      "Wild Card should have joined the rotation once the game started"
     );
   } finally {
     room1.closeAll();
   }
 
-  // --- Part 2: without Rando, 2 real players are still refused.
+  // --- Part 2: without Wild Card, 2 real players are still refused.
   const room2 = await makeRoom(baseUrl, ["Alice", "Bob"]);
   try {
     await selectOfficialPacks(room2.host);
@@ -40,20 +40,20 @@ export default async function ({ baseUrl }) {
     await waitFor(() => room2.host.errors.length > errorsBefore, { label: "startGame to be refused" });
     assert(
       room2.host.errors.slice(errorsBefore).some((e) => e.code === "NOT_ENOUGH_PLAYERS"),
-      "2 real players with no Rando should still be refused"
+      "2 real players with no Wild Card should still be refused"
     );
   } finally {
     room2.closeAll();
   }
 
-  // --- Part 3: a 3-to-2 leave with Rando on keeps the game alive, and
+  // --- Part 3: a 3-to-2 leave with Wild Card on keeps the game alive, and
   // Democracy (already dealt while there were 3 real players) is rejected
   // at play time once the leave drops below its 3-real-player floor.
   const room3 = await makeRoom(baseUrl, ["Alice", "Bob", "Carol"]);
   try {
     await selectOfficialPacks(room3.host);
     room3.host.emit("updateHouseRules", {
-      houseRules: { randoCardrissian: true, actionCards: true, handRefresh: true },
+      houseRules: { wildCard: true, actionCards: true, handRefresh: true },
     });
     room3.host.emit("setActionCardDensity", { value: 15 });
     room3.host.emit("updateHandSize", { value: 20 });
@@ -65,7 +65,7 @@ export default async function ({ baseUrl }) {
     room3.host.emit("setActionCardTier", { cardId: "democracy", tier: "common" });
     await waitFor(
       () =>
-        room3.host.state.houseRules.randoCardrissian &&
+        room3.host.state.houseRules.wildCard &&
         room3.host.state.actionCardDensity === 15 &&
         room3.host.state.actionCardTiers?.democracy === "common",
       { label: "settings to apply" }
@@ -78,20 +78,20 @@ export default async function ({ baseUrl }) {
     assert(found, "Democracy should be reachable with 3 real players");
 
     // Someone other than the Democracy holder or the host leaves, dropping
-    // to 2 real players (+ Rando, which doesn't count as real). Excluding
+    // to 2 real players (+ Wild Card, which doesn't count as real). Excluding
     // the host matters: this reads room3.host.state afterward as the
     // observer, and a socket that has itself left the room stops receiving
     // state broadcasts - if the host were the one to leave, this would
     // flakily time out waiting on state that will never arrive.
     const leaver =
-      room3.clients.find((c) => c !== found.owner && c !== room3.host && !c.me?.isCzar) ??
+      room3.clients.find((c) => c !== found.owner && c !== room3.host && !c.me?.isJudge) ??
       room3.clients.find((c) => c !== room3.host);
     leaver.emit("leaveRoom");
     await waitFor(
-      () => room3.host.state.players.filter((p) => p.role === "player" && !p.isRando).length === 2,
+      () => room3.host.state.players.filter((p) => p.role === "player" && !p.isWildCard).length === 2,
       { label: "the room to reflect the departure" }
     );
-    assert(room3.host.state.phase !== "gameEnd", "the game must not end - Rando covers the floor down to 2");
+    assert(room3.host.state.phase !== "gameEnd", "the game must not end - Wild Card covers the floor down to 2");
 
     // Democracy, already in a real player's hand from before the leave, is
     // now refused at play time - the electorate is too small for a vote.
@@ -112,8 +112,8 @@ export default async function ({ baseUrl }) {
     room3.closeAll();
   }
 
-  // --- Part 4: the same 3-to-2 leave WITHOUT Rando still ends the game -
-  // the pre-existing floor is unchanged when Rando isn't covering it.
+  // --- Part 4: the same 3-to-2 leave WITHOUT Wild Card still ends the game -
+  // the pre-existing floor is unchanged when Wild Card isn't covering it.
   const room4 = await makeRoom(baseUrl, ["Alice", "Bob", "Carol"]);
   try {
     await selectOfficialPacks(room4.host);
@@ -122,10 +122,10 @@ export default async function ({ baseUrl }) {
 
     room4.clients[1].emit("leaveRoom");
     await waitFor(() => room4.host.state.phase === "gameEnd", {
-      label: "the game to end once real players drop below 3 with no Rando",
+      label: "the game to end once real players drop below 3 with no Wild Card",
     });
     assertEqual(
-      room4.host.state.players.filter((p) => p.role === "player" && !p.isRando).length,
+      room4.host.state.players.filter((p) => p.role === "player" && !p.isWildCard).length,
       2,
       "sanity check: exactly 2 real players should remain"
     );

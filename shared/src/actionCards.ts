@@ -17,13 +17,13 @@ export interface ActionCardDef {
   timing: ActionCardTiming;
   /** Spends one won black card to play - default false (free). */
   costsWonBlackCard?: boolean;
-  /** Only meaningful in a Czar-judged game, so it's left out of the deck
+  /** Only meaningful in a Judge-judged game, so it's left out of the deck
    * entirely when Crowd Favorite is on rather than being drawable and then
    * refused (see Room.buildDecks / playActionCard). */
-  requiresCzarMode?: boolean;
-  /** Needs at least this many real (non-Rando) players to be meaningful -
+  requiresJudgeMode?: boolean;
+  /** Needs at least this many real (non-Wild Card) players to be meaningful -
    * left out of the deck entirely below that floor, same "filter at
-   * deck-build, guard again at play-time" pattern as requiresCzarMode (see
+   * deck-build, guard again at play-time" pattern as requiresJudgeMode (see
    * Room.buildDecks / playActionCard). */
   minRealPlayers?: number;
 }
@@ -65,9 +65,9 @@ export const ACTION_CARD_DEFS: ActionCardDef[] = [
     timing: "immediate",
   },
   {
-    id: "czar_accent",
+    id: "judge_accent",
     name: "Do the Voice",
-    description: "The Czar must read every submission in an accent this round.",
+    description: "The {judge} must read every submission in an accent this round.",
     shape: "flavor",
     timing: "laterThisRound",
   },
@@ -88,14 +88,14 @@ export const ACTION_CARD_DEFS: ActionCardDef[] = [
   {
     id: "democracy",
     name: "Democracy",
-    description: "Everyone votes for the winner this round instead of the Czar.",
+    description: "Everyone votes for the winner this round instead of the {judge}.",
     shape: "self",
     timing: "laterThisRound",
     // Crowd Favorite already puts every round to a vote, so this would be a
     // dead card in that mode.
-    requiresCzarMode: true,
+    requiresJudgeMode: true,
     // A vote needs an actual electorate - with only 2 real players, playing
-    // it just turns the Czar into a second contestant with nobody left to
+    // it just turns the Judge into a second contestant with nobody left to
     // judge between them.
     minRealPlayers: 3,
   },

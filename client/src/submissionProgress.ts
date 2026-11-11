@@ -8,7 +8,7 @@ export function getSubmissionProgress(state: RoomStateForClient): {
   submittedCount: number;
 } {
   const requiredPlayers = state.players.filter(
-    (p) => p.role === "player" && !p.isRando && (state.votingThisRound || !p.isCzar)
+    (p) => p.role === "player" && !p.isWildCard && (state.votingThisRound || !p.isJudge)
   );
   const submittedCount = requiredPlayers.filter((p) => p.hasSubmitted).length;
   return { requiredPlayers, submittedCount };

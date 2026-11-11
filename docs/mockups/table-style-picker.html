@@ -504,7 +504,7 @@
   footer { margin-top:clamp(1.2rem,2vw,1.8rem); display:flex; gap:clamp(1rem,2vw,1.6rem); flex-wrap:wrap; border-top:1px solid var(--rule); padding-top:clamp(.7rem,1.2vw,1rem); }
   .score-chip { display:flex; align-items:baseline; gap:.4rem; font-size:.85rem; }
   .score-chip .num { font-family:${t.fonts.display}; font-weight:${t.fonts.displayWeight}; color:var(--accent); }
-  .score-chip.czar .name::before { content:"♛ "; color:var(--accent); }
+  .score-chip.judge .name::before { content:"♛ "; color:var(--accent); }
 
   /* ---------- Spotlight: tapping a card brings it forward and enlarges it ---------- */
   .spotlight-backdrop {
@@ -561,7 +561,7 @@
     <div class="hand" id="hand">${slotHtml}</div>
   </main>
   <footer>
-    <div class="score-chip czar"><span class="name">Marcus</span> <span class="num">3</span></div>
+    <div class="score-chip judge"><span class="name">Marcus</span> <span class="num">3</span></div>
     <div class="score-chip"><span class="name">Priya</span> <span class="num">4</span></div>
     <div class="score-chip"><span class="name">Jonah</span> <span class="num">1</span></div>
     <div class="score-chip"><span class="name">Dee</span> <span class="num">2</span></div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import RoleNamesFields from "./RoleNamesFields.js";
 import type { PackSelectionPreset, PackSummary, RoomStateForClient, TableStyle, TableTheme } from "@tabletop-judge/shared";
 import {
   DEFAULT_MAX_CARD_SIZE,
@@ -258,10 +259,10 @@ export default function Lobby({ state }: { state: RoomStateForClient }) {
               <span>
                 {p.name} {p.role === "table" && <span className="tag">Shared Screen</span>}
                 {p.isHost && <span className="tag">Host</span>}
-                {p.isRando && <span className="tag">Bot</span>}
+                {p.isWildCard && <span className="tag">Bot</span>}
                 {!p.connected && <span className="tag muted">Disconnected</span>}
               </span>
-              {isHost && p.id !== state.you.id && !p.isRando && (
+              {isHost && p.id !== state.you.id && !p.isWildCard && (
                 <span className="player-actions">
                   {p.role !== "table" && (
                     <button type="button" onClick={() => socket.emit("transferHost", { playerId: p.id })}>
@@ -288,21 +289,21 @@ export default function Lobby({ state }: { state: RoomStateForClient }) {
           <input
             type="checkbox"
             disabled={!hasLobbyAuthority}
-            checked={state.houseRules.randoCardrissian}
-            onChange={(e) => socket.emit("updateHouseRules", { houseRules: { randoCardrissian: e.target.checked } })}
+            checked={state.houseRules.wildCard}
+            onChange={(e) => socket.emit("updateHouseRules", { houseRules: { wildCard: e.target.checked } })}
           />
-          Rando Cardrissian
+          {state.roleNames.wildCard}
         </label>
-        {state.houseRules.randoCardrissian && (
+        {state.houseRules.wildCard && (
           <label className="toggle-row">
             <input
               type="checkbox"
               disabled={!hasLobbyAuthority}
-              checked={state.houseRules.randoCanScore}
-              onChange={(e) => socket.emit("updateHouseRules", { houseRules: { randoCanScore: e.target.checked } })}
+              checked={state.houseRules.wildCardCanScore}
+              onChange={(e) => socket.emit("updateHouseRules", { houseRules: { wildCardCanScore: e.target.checked } })}
             />
-            Rando can win
-            <span className="muted"> (a normal competitor — scores, and the game can end on Rando's score)</span>
+            {state.roleNames.wildCard} can win
+            <span className="muted"> (a normal competitor — scores, and the game can end on {state.roleNames.wildCard}'s score)</span>
           </label>
         )}
         <label className="toggle-row">
@@ -371,7 +372,7 @@ export default function Lobby({ state }: { state: RoomStateForClient }) {
             onChange={(e) => socket.emit("updateHouseRules", { houseRules: { customPrompts: e.target.checked } })}
           />
           Custom Prompts
-          <span className="muted"> (the Card Czar can write their own black card instead of drawing one)</span>
+          <span className="muted"> (the {state.roleNames.judge} can write their own black card instead of drawing one)</span>
         </label>
         <label className="toggle-row">
           <input
@@ -381,7 +382,7 @@ export default function Lobby({ state }: { state: RoomStateForClient }) {
             onChange={(e) => socket.emit("updateHouseRules", { houseRules: { crowdFavorite: e.target.checked } })}
           />
           Crowd Favorite
-          <span className="muted"> (no Card Czar — everyone submits, everyone votes, majority wins)</span>
+          <span className="muted"> (no {state.roleNames.judge} — everyone submits, everyone votes, majority wins)</span>
         </label>
         <label className="toggle-row">
           <input
@@ -536,6 +537,12 @@ export default function Lobby({ state }: { state: RoomStateForClient }) {
           cards
           <span className="muted"> (Lobby only, before the game starts)</span>
         </label>
+        <h3 className="settings-subhead">Names</h3>
+        <RoleNamesFields
+          value={state.roleNames}
+          disabled={!hasLobbyAuthority}
+          onCommit={(roleNames) => socket.emit("updateRoleNames", { roleNames })}
+        />
       </SettingsSection>
 
       <SettingsSection title="Shared Screen" summary={sharedScreenSummary(state)}>
@@ -753,7 +760,7 @@ export default function Lobby({ state }: { state: RoomStateForClient }) {
           Black card text is independent of overall Shared Screen size — adjustable anytime, not just here.
         </p>
         <p className="muted">
-          During a round, the Czar or Shared Screen can also nudge size up/down remotely from the +/− buttons in the header.
+          During a round, the {state.roleNames.judge} or Shared Screen can also nudge size up/down remotely from the +/− buttons in the header.
         </p>
         {hasLobbyAuthority && (
           <div className="row">

@@ -13,7 +13,7 @@ import type { ServerPlayer } from "../types.js";
 // wager for pick-2/3 rounds was never specified, so it's left for later
 // rather than guessed at.
 export function canOfferDoubleDown(player: ServerPlayer, blackCardPick: number): boolean {
-  return blackCardPick === 1 && player.role === "player" && !player.isRando;
+  return blackCardPick === 1 && player.role === "player" && !player.isWildCard;
 }
 
 export function isEligibleToWager(player: ServerPlayer): boolean {

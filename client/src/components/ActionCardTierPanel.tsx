@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ActionCardTier, RoomStateForClient } from "@tabletop-judge/shared";
+import { fillRoleNames } from "@tabletop-judge/shared";
 import {
   ACTION_CARD_DEFS,
   ACTION_CARD_TIERS,
@@ -29,11 +30,11 @@ export default function ActionCardTierPanel({
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Democracy is filtered out of the deck under Crowd Favorite (it needs a
-  // Czar to override) or below its real-player floor (it needs a real
+  // Judge to override) or below its real-player floor (it needs a real
   // electorate), so showing a control for it there would be a lie.
-  const realPlayerCount = state.players.filter((p) => p.role === "player" && !p.isRando).length;
+  const realPlayerCount = state.players.filter((p) => p.role === "player" && !p.isWildCard).length;
   const defs = ACTION_CARD_DEFS.filter(
-    (d) => !(d.requiresCzarMode && state.houseRules.crowdFavorite) && (!d.minRealPlayers || realPlayerCount >= d.minRealPlayers)
+    (d) => !(d.requiresJudgeMode && state.houseRules.crowdFavorite) && (!d.minRealPlayers || realPlayerCount >= d.minRealPlayers)
   );
   const tiers = state.actionCardTiers ?? {};
   const enabledCount = defs.filter((d) => (tiers[d.id] ?? "normal") !== "off").length;
@@ -70,7 +71,7 @@ export default function ActionCardTierPanel({
             <li key={def.id} className={current === "off" ? "tier-row is-off" : "tier-row"}>
               <div className="tier-card">
                 <span className="tier-name">{def.name}</span>
-                <span className="muted tier-desc">{def.description}</span>
+                <span className="muted tier-desc">{fillRoleNames(def.description, state.roleNames)}</span>
               </div>
               <div className="tier-picker" role="group" aria-label={`${def.name} frequency`}>
                 {ACTION_CARD_TIERS.map((tier) => (

@@ -5,10 +5,10 @@ import { TrophyIcon } from "./Icons.js";
 export default function RoundEndView({ state }: { state: RoomStateForClient }) {
   const result = state.lastRound;
   if (!result) return null;
-  // Rando's own win is a no-op for score unless randoCanScore is on
+  // Wild Card's own win is a no-op for score unless wildCardCanScore is on
   // (CLAUDE.md) - don't claim a point was earned when one wasn't.
-  const winnerIsRando = state.players.find((p) => p.id === result.winningPlayerId)?.isRando ?? false;
-  const winnerScored = !winnerIsRando || state.houseRules.randoCanScore;
+  const winnerIsWildCard = state.players.find((p) => p.id === result.winningPlayerId)?.isWildCard ?? false;
+  const winnerScored = !winnerIsWildCard || state.houseRules.wildCardCanScore;
 
   return (
     <div className="stack">

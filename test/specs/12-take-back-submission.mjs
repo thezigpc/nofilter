@@ -25,7 +25,7 @@ export default async function ({ baseUrl }) {
     await room.host.waitForPhase("submission");
     await waitForDeal(room);
 
-    const submitters = room.clients.filter((c) => !c.me.isCzar);
+    const submitters = room.clients.filter((c) => !c.me.isJudge);
     assert(submitters.length >= 3, "need at least three submitters for this spec");
     const [first, second, third] = submitters;
     const handSize = room.host.state.handSize;

@@ -50,9 +50,9 @@ function nameList(names: string[], max = 3): string {
  * mostly-off reads "only Tax, Peek".
  */
 function describeActionCards(state: RoomStateForClient): string {
-  const realPlayerCount = state.players.filter((p) => p.role === "player" && !p.isRando).length;
+  const realPlayerCount = state.players.filter((p) => p.role === "player" && !p.isWildCard).length;
   const available = ACTION_CARD_DEFS.filter(
-    (d) => !(d.requiresCzarMode && state.houseRules.crowdFavorite) && (!d.minRealPlayers || realPlayerCount >= d.minRealPlayers)
+    (d) => !(d.requiresJudgeMode && state.houseRules.crowdFavorite) && (!d.minRealPlayers || realPlayerCount >= d.minRealPlayers)
   );
   const tiers = state.actionCardTiers ?? {};
   const tierOf = (id: string) => tiers[id] ?? "normal";
@@ -86,8 +86,8 @@ function describeActionCards(state: RoomStateForClient): string {
 function getActiveHouseRules(state: RoomStateForClient): SummaryItem[] {
   const r = state.houseRules;
   const items: SummaryItem[] = [];
-  if (r.randoCardrissian) {
-    items.push({ Icon: DiceIcon, name: "Rando Cardrissian", detail: r.randoCanScore ? "can win" : undefined });
+  if (r.wildCard) {
+    items.push({ Icon: DiceIcon, name: state.roleNames.wildCard, detail: r.wildCardCanScore ? "can win" : undefined });
   }
   if (r.doubleDown) items.push({ Icon: CoinIcon, name: "Double Down", detail: `${state.doubleDownWindowSeconds}s window` });
   if (r.tradeIn) items.push({ Icon: SwapIcon, name: "Trade-In" });

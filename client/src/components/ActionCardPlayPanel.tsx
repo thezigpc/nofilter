@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ActionCardDef, RoomStateForClient, WhiteCard } from "@tabletop-judge/shared";
+import { fillRoleNames } from "@tabletop-judge/shared";
 import { socket } from "../socket.js";
 import { tapHaptic } from "../haptics.js";
 
@@ -20,7 +21,7 @@ export default function ActionCardPlayPanel({ card, def, state, onClose }: Props
   const [targetId, setTargetId] = useState<string | null>(null);
   const [giveCardId, setGiveCardId] = useState<string | null>(null);
 
-  const targets = state.players.filter((p) => p.role === "player" && !p.isRando && p.id !== state.you.id);
+  const targets = state.players.filter((p) => p.role === "player" && !p.isWildCard && p.id !== state.you.id);
   const hand = (state.yourHand ?? []).filter((c) => c.id !== card.id);
 
   function play(targetPlayerId?: string, giveId?: string) {
@@ -34,7 +35,7 @@ export default function ActionCardPlayPanel({ card, def, state, onClose }: Props
       <div className="spotlight-inner">
         <div className="panel action-card-panel">
           <h3>{def.name}</h3>
-          <p className="muted">{def.description}</p>
+          <p className="muted">{fillRoleNames(def.description, state.roleNames)}</p>
 
           {def.shape === "self" || def.shape === "flavor" ? (
             <div className="row">

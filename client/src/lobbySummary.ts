@@ -19,8 +19,8 @@ import {
  */
 
 const HOUSE_RULE_LABELS: Partial<Record<keyof typeof DEFAULT_HOUSE_RULES, string>> = {
-  randoCardrissian: "Rando Cardrissian",
-  randoCanScore: "Rando Can Win",
+  wildCard: "Wild Card",
+  wildCardCanScore: "Wild Card Can Win",
   doubleDown: "Double Down",
   tradeIn: "Trade-In",
   handRefresh: "Hand Refresh",
@@ -91,7 +91,9 @@ export function changesFromDefault(state: RoomStateForClient): string[] {
   ][]) {
     const now = state.houseRules[key];
     if (now === DEFAULT_HOUSE_RULES[key]) continue;
-    out.push(now ? label : `${label} off`);
+    // The bot's toggle is labelled with whatever this room calls it.
+    const shown = label.replace("Wild Card", state.roleNames.wildCard);
+    out.push(now ? shown : `${shown} off`);
   }
 
   if (

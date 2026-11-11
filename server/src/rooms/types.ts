@@ -12,7 +12,7 @@ export interface ServerPlayer {
    * claim host (see Room.claimHost). */
   disconnectedAt?: number | null;
   isHost: boolean;
-  isRando?: boolean;
+  isWildCard?: boolean;
   hand: WhiteCard[];
   score: number;
   /** Currency for Double Down — black cards won in previous rounds. */

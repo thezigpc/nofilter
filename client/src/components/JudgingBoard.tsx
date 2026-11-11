@@ -46,7 +46,7 @@ interface JudgingBoardProps {
   /** For any player's "Table" tab: shows the same board (unrevealed slots
    * already come through as cards:null) but can't drive any of it — no
    * shuffle/reveal/pick, and a currently-open spotlight is just watched,
-   * not controlled. Only the Czar or Table ever render this without
+   * not controlled. Only the Judge or Table ever render this without
    * readOnly. */
   readOnly?: boolean;
   /** Crowd Favorite: no unilateral Pick — everyone (including a non-
@@ -76,7 +76,7 @@ export default function JudgingBoard({
   const shuffleLocked = state.shuffleLocked ?? false;
   const spotlightEnabled = state.tableStyle.spotlightEnabled;
   // Server-synced (see Room.spotlightId), not per-client local state — the
-  // spotlight opens/closes together on the Table and the Czar's own phone,
+  // spotlight opens/closes together on the Table and the Judge's own phone,
   // whichever one triggered it.
   const spotlightId = state.spotlightSubmissionId ?? null;
   // The size adjustment is Shared-Screen-only — the spotlight already reads
@@ -86,8 +86,8 @@ export default function JudgingBoard({
 
   // Read-only viewers (a player's "Table" tab) can't drive the shared
   // spotlight, but they still need a way to back out of it locally without
-  // affecting what the Czar/Table see - otherwise they're stuck staring at
-  // whatever's spotlighted until the Czar closes it. Purely local/visual:
+  // affecting what the Judge/Table see - otherwise they're stuck staring at
+  // whatever's spotlighted until the Judge closes it. Purely local/visual:
   // resets whenever the server spotlights something new, so a fresh
   // spotlight always shows up even if a previous one was dismissed.
   const [locallyDismissedId, setLocallyDismissedId] = useState<string | null>(null);
@@ -105,7 +105,7 @@ export default function JudgingBoard({
   }
   function pick(submissionId: string) {
     if (onPick) onPick(submissionId);
-    else socket.emit("czarPick", { submissionId });
+    else socket.emit("judgePick", { submissionId });
   }
   function spotlight(submissionId: string) {
     if (onSpotlight) onSpotlight(submissionId);
@@ -190,7 +190,7 @@ export default function JudgingBoard({
         </div>
       </div>
       {slot.revealed &&
-        // Spotlight hides the grid's own action button because a Czar-
+        // Spotlight hides the grid's own action button because a Judge-
         // driven round expects you to act from the big spotlight overlay
         // instead - but a voting round has no one driving cards into the
         // spotlight one at a time (every card auto-reveals at once, see
@@ -255,12 +255,12 @@ export default function JudgingBoard({
               {spotlightEnabled ? "Tap a face-down card to bring it forward." : "Tap a face-down card to reveal it."}
             </p>
           )}
-          {(state.you.isHost || state.you.isCzar) && (
+          {(state.you.isHost || state.you.isJudge) && (
             <button
               type="button"
               onClick={() => {
                 if (window.confirm("Skip your turn? The round redeals and passes to the next player.")) {
-                  socket.emit("skipCzarTurn");
+                  socket.emit("skipJudgeTurn");
                 }
               }}
             >
@@ -271,7 +271,7 @@ export default function JudgingBoard({
       ) : voteMode ? (
         <p className="center-text muted">Vote for your favorite once it's revealed — you can change your mind until everyone's voted.</p>
       ) : (
-        <p className="center-text muted">Watching the Czar judge…</p>
+        <p className="center-text muted">Watching the {state.roleNames.judge} judge…</p>
       )}
 
       {useFillSizing ? (

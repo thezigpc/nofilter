@@ -28,6 +28,7 @@ services:
       ADMIN_PASSWORD_HASH_PATH: /data/admin-password.json
       CORE_SET_PATH: /data/core-set.json
       GAME_NAME_PATH: /data/game-name.json
+      ROLE_NAMES_PATH: /data/role-names.json
       DEFAULT_THEME_PATH: /data/default-theme.json
       # No longer required - leaving ADMIN_PASSWORD unset in .env is what
       # lets the first-run setup wizard engage (server/src/admin/auth.ts).

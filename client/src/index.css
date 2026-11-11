@@ -17,7 +17,7 @@
 }
 
 /* Table (Shared Screen) theme: every role picks up the room's chosen
-   color/shape tokens now, not just the Shared Screen itself - a Czar's or
+   color/shape tokens now, not just the Shared Screen itself - a Judge's or
    player's own phone should match the room's look. Only sizing and layout
    stay Shared-Screen-exclusive (see the .page.role-table block below,
    still gated on the role-table class). The room's chosen accent swatch
@@ -966,7 +966,7 @@ button.primary {
   text-align: center;
 }
 
-/* The Czar/Table's "waiting for everyone to submit" moment - dead time
+/* The Judge/Table's "waiting for everyone to submit" moment - dead time
    worth making a feature of rather than a small card up top: the prompt
    fills the screen, centered both ways, readable from across a room. */
 .waiting-hero {
@@ -991,7 +991,7 @@ button.primary {
   font-size: 1.3rem;
 }
 
-/* The Czar's own phone gets the same big "waiting hero" treatment as the
+/* The Judge's own phone gets the same big "waiting hero" treatment as the
    Table (see RoomPage.tsx's WaitingPanel), but the Table's 2.2rem base was
    tuned for a screen read from across a room and overflowed a narrow phone
    even after --black-card-length-scale kicked in. */
@@ -1951,7 +1951,7 @@ button.primary {
   color: var(--action-btn-fg);
 }
 
-.score-chip.czar {
+.score-chip.judge {
   color: #e0ab5c;
 }
 
@@ -1960,9 +1960,9 @@ button.primary {
 }
 
 /* Spotlight: tapping a card brings it forward, large, with the black card
-   pinned above so the Czar never loses track of what they're judging
+   pinned above so the Judge never loses track of what they're judging
    against. Shares the same theme tokens as everything else, so it inherits
-   whichever Table style (or the default phone look, on the Czar's own
+   whichever Table style (or the default phone look, on the Judge's own
    phone) is active without any extra wiring. */
 .spotlight-backdrop {
   position: fixed;
@@ -3389,4 +3389,27 @@ button.primary {
 .admin-bar.locked {
   border: 1px solid color-mix(in srgb, #d98324 55%, transparent);
   background: color-mix(in srgb, #d98324 10%, transparent);
+}
+
+/* Judge / Wild Card naming - Lobby (House Rules) and /admin. */
+.settings-subhead {
+  margin: 1rem 0 0.25rem;
+  font-size: 1rem;
+}
+.role-names {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.role-name-field {
+  display: grid;
+  gap: 0.15rem;
+}
+.role-name-field input {
+  width: 100%;
+  max-width: 20rem;
+  box-sizing: border-box;
+}
+.role-name-field .muted {
+  font-size: 0.85em;
 }

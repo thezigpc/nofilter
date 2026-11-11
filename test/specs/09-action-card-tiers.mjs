@@ -25,7 +25,7 @@ export default async function ({ baseUrl }) {
     // Everything off except a Rare one and a Common one, so the seeded mix
     // is unambiguous: only these two types should ever appear, in roughly
     // the ratio of their tier weights.
-    const OFF = ["peek", "discard_bomb", "card_block", "triple_boost", "czar_accent", "tax", "democracy"];
+    const OFF = ["peek", "discard_bomb", "card_block", "triple_boost", "judge_accent", "tax", "democracy"];
     for (const cardId of OFF) room.host.emit("setActionCardTier", { cardId, tier: "off" });
     room.host.emit("setActionCardTier", { cardId: "steal", tier: "rare" });
     room.host.emit("setActionCardTier", { cardId: "reverse_judging", tier: "common" });

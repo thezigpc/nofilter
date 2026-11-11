@@ -72,6 +72,12 @@ import {
   BACKGROUND_STYLES,
   MIN_FACEDOWN_OPACITY,
   MAX_FACEDOWN_OPACITY,
+  DEFAULT_ROLE_NAMES,
+  fillRoleNames,
+  migrateLegacyGameSetup,
+  migrateLegacyHouseRules,
+  normalizeRoleNames,
+  type RoleNames,
 } from "@tabletop-judge/shared";
 import type { LoadedCardData } from "../cards/loader.js";
 import { isVulgar } from "../cards/vulgarFilter.js";
@@ -81,7 +87,7 @@ import { shuffle } from "../util/shuffle.js";
 import { log } from "../util/logger.js";
 import { RoomError } from "./errors.js";
 import type { DoubleDownPendingOffer, ServerPlayer, SubmissionEntry } from "./types.js";
-import { autoSubmitRando, createRandoPlayer, dealToRando, RANDO_PLAYER_ID } from "./houseRules/randoCardrissian.js";
+import { autoSubmitWildCard, createWildCardPlayer, dealToWildCard, WILD_CARD_PLAYER_ID } from "./houseRules/wildCard.js";
 import { canOfferDoubleDown, isEligibleToWager } from "./houseRules/doubleDown.js";
 import { ACTION_CARD_TIER_WEIGHTS, HAND_SIZE, HOST_CLAIM_AFTER_SECONDS, ROUND_END_DELAY_MS } from "../config.js";
 
@@ -146,13 +152,17 @@ export class Room {
   spotlightScale: number = DEFAULT_SPOTLIGHT_SCALE;
   scoreboardScale: number = DEFAULT_SCOREBOARD_SCALE;
   tableStyle: TableStyle = { ...DEFAULT_TABLE_STYLE };
+  /** Player-visible names for the Judge and the Wild Card bot - see
+   * shared/src/roleNames.ts. Seeded from the deployment default by
+   * RoomManager.createRoom(), overridable by the host in the Lobby. */
+  roleNames: RoleNames = { ...DEFAULT_ROLE_NAMES };
 
   private readonly io: IO;
   private readonly cardData: LoadedCardData;
 
   private players = new Map<string, ServerPlayer>();
-  private czarOrder: string[] = [];
-  private czarIndex = 0;
+  private judgeOrder: string[] = [];
+  private judgeIndex = 0;
 
   private whiteDeck: WhiteCard[] = [];
   private whiteDiscard: WhiteCard[] = [];
@@ -163,10 +173,10 @@ export class Room {
   private submissions = new Map<string, SubmissionEntry>();
   /** Display order of this round's lineup slots — reshufflable until the first reveal. */
   private judgingOrder: string[] = [];
-  /** submissionIds the Czar/Table has flipped face-up this round. */
+  /** submissionIds the Judge/Table has flipped face-up this round. */
   private revealedIds = new Set<string>();
   /** Server-synced so the spotlight opens/closes together on the Table and
-   * the Czar's own phone, whichever one triggers it. */
+   * the Judge's own phone, whichever one triggers it. */
   private spotlightId: string | null = null;
   private pendingDoubleDown = new Map<string, DoubleDownPendingOffer>();
   /** Crowd Favorite mode only: voterId -> submissionId, re-castable until the round resolves. */
@@ -197,10 +207,10 @@ export class Room {
    * draw at all (Auto Draw top-up or manual) until the following deal. */
   private blockedFromDrawingIds = new Set<string>();
   /** Set by a played "flavor"-shape Action Card - a judging-time
-   * instruction for the Czar, cleared at finishRound(). */
+   * instruction for the Judge, cleared at finishRound(). */
   private pendingJudgingMessage: string | null = null;
   /** Set by the Democracy Action Card: this one round is decided by a vote
-   * instead of the Czar. Reset every dealPhase(), so it never leaks into
+   * instead of the Judge. Reset every dealPhase(), so it never leaks into
    * the next round. */
   private democracyThisRound = false;
 
@@ -245,7 +255,7 @@ export class Room {
           this.houseRules.autoDraw &&
           this.phase === "submission" &&
           existing.role === "player" &&
-          !existing.isRando &&
+          !existing.isWildCard &&
           !this.hasNormalSubmission(existing.id)
         ) {
           while (existing.hand.length < this.handSize) {
@@ -287,14 +297,14 @@ export class Room {
     // manually drawn) and is excused from being *required* to submit for
     // whichever round is already underway — see maybeAdvanceToReveal.
     // personalCards is excluded here too - no round has happened yet, so
-    // there's nothing to catch up on, and czarOrder gets rebuilt fresh from
+    // there's nothing to catch up on, and judgeOrder gets rebuilt fresh from
     // current players when that window closes anyway (see beginFirstRound).
     if (role === "player" && this.phase !== "lobby" && this.phase !== "gameEnd" && this.phase !== "personalCards") {
-      this.czarOrder.push(id);
+      this.judgeOrder.push(id);
       this.midGameExcused.add(id);
       if (this.houseRules.catchUpNewPlayers) {
         const others = [...this.players.values()].filter(
-          (p) => p.role === "player" && !p.isRando && p.id !== id
+          (p) => p.role === "player" && !p.isWildCard && p.id !== id
         );
         if (others.length > 0) {
           const target = Math.min(...others.map((p) => p.wonBlackCards.length));
@@ -335,7 +345,7 @@ export class Room {
     // included — see CLAUDE.md on reconnect being first-class.
     if (this.phase === "lobby" && player.isHost) {
       const candidates = [...this.players.values()].filter(
-        (p) => p.id !== playerId && p.role === "player" && !p.isRando
+        (p) => p.id !== playerId && p.role === "player" && !p.isWildCard
       );
       const next = candidates.find((p) => p.connected) ?? candidates[0];
       if (next) {
@@ -365,7 +375,7 @@ export class Room {
   claimHost(playerId: string): void {
     const claimant = this.players.get(playerId);
     if (!claimant) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
-    if (claimant.role !== "player" || claimant.isRando) {
+    if (claimant.role !== "player" || claimant.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "Only a player can take over as host.");
     }
     if (claimant.isHost) return;
@@ -428,7 +438,7 @@ export class Room {
   /** Voluntary self-leave. Lobby has always allowed this; mid-game now does
    * too - same discard/rotation handling as being kicked (their hand was
    * never seen by anyone, so it's fine to just re-absorb it into the
-   * piles). If real (non-Rando) players drop below minPlayersToContinue(),
+   * piles). If real (non-Wild Card) players drop below minPlayersToContinue(),
    * the game ends immediately on current standings, same as the host's End
    * Game button - there's no "too few players" state to limp along in. */
   leaveRoom(playerId: string): void {
@@ -444,16 +454,16 @@ export class Room {
       throw new RoomError("CANT_LEAVE", "Only players can leave mid-game — the Shared Screen isn't in the rotation.");
     }
 
-    const wasCzar = playerId === this.currentCzarId();
+    const wasJudge = playerId === this.currentJudgeId();
     this.removePlayerInternal(playerId);
 
-    const realPlayers = [...this.players.values()].filter((p) => p.role === "player" && !p.isRando);
+    const realPlayers = [...this.players.values()].filter((p) => p.role === "player" && !p.isWildCard);
     if (realPlayers.length < minPlayersToContinue(this.houseRules)) {
       this.endGameNow();
       return;
     }
 
-    if (wasCzar && (this.phase === "submission" || this.phase === "reveal" || this.phase === "judging")) {
+    if (wasJudge && (this.phase === "submission" || this.phase === "reveal" || this.phase === "judging")) {
       this.clearTimer();
       this.dealPhase();
     } else if (this.phase === "submission") {
@@ -467,9 +477,9 @@ export class Room {
     if (targetId === actor.id) throw new RoomError("CANT_KICK_SELF", "You can't kick yourself.");
     const target = this.players.get(targetId);
     if (!target) throw new RoomError("NOT_IN_ROOM", "That player isn't in this room.");
-    if (target.isRando) throw new RoomError("CANT_KICK_RANDO", "Rando isn't a real player — turn off the house rule instead.");
+    if (target.isWildCard) throw new RoomError("CANT_KICK_WILD_CARD", `${this.roleNames.wildCard} isn't a real player — turn off the house rule instead.`);
 
-    const wasCzar = targetId === this.currentCzarId();
+    const wasJudge = targetId === this.currentJudgeId();
     const removedSocketId = target.socketId;
     this.removePlayerInternal(targetId);
 
@@ -478,9 +488,9 @@ export class Room {
       this.io.sockets.sockets.get(removedSocketId)?.leave(this.code);
     }
 
-    if (wasCzar && (this.phase === "submission" || this.phase === "reveal" || this.phase === "judging")) {
+    if (wasJudge && (this.phase === "submission" || this.phase === "reveal" || this.phase === "judging")) {
       this.clearTimer();
-      if (this.czarOrder.length < 2) {
+      if (this.judgeOrder.length < 2) {
         this.resetToLobby();
       } else {
         this.dealPhase();
@@ -496,7 +506,7 @@ export class Room {
     const actor = this.requireHost(actingId);
     const target = this.players.get(targetId);
     if (!target) throw new RoomError("NOT_IN_ROOM", "That player isn't in this room.");
-    if (target.isRando) throw new RoomError("CANT_HOST_RANDO", "Rando can't be host.");
+    if (target.isWildCard) throw new RoomError("CANT_HOST_WILD_CARD", `${this.roleNames.wildCard} can't be host.`);
     if (target.role === "table") {
       throw new RoomError("CANT_HOST_TABLE", "The Shared Screen can't be host — it doesn't hold cards or take a turn.");
     }
@@ -517,29 +527,29 @@ export class Room {
     }
     this.pendingDoubleDown.delete(playerId);
 
-    const czarIdx = this.czarOrder.indexOf(playerId);
-    if (czarIdx !== -1) {
-      this.czarOrder.splice(czarIdx, 1);
-      // Strictly less-than: removing someone *before* the current Czar
+    const judgeIdx = this.judgeOrder.indexOf(playerId);
+    if (judgeIdx !== -1) {
+      this.judgeOrder.splice(judgeIdx, 1);
+      // Strictly less-than: removing someone *before* the current Judge
       // shifts the array left under them, so the pointer needs to shift
       // down by one to keep tracking the same person. But removing the
-      // *current* Czar themselves (czarIdx === czarIndex) needs no
+      // *current* Judge themselves (judgeIdx === judgeIndex) needs no
       // decrement at all - splice already slides the next player into
       // that same slot. Using <= here decremented anyway, landing the
-      // pointer one slot backward onto whoever was Czar the round before -
-      // a real repeat/skip bug in the rotation whenever the current Czar
+      // pointer one slot backward onto whoever was Judge the round before -
+      // a real repeat/skip bug in the rotation whenever the current Judge
       // was kicked or left mid-round.
-      if (czarIdx < this.czarIndex && this.czarIndex > 0) {
-        this.czarIndex -= 1;
+      if (judgeIdx < this.judgeIndex && this.judgeIndex > 0) {
+        this.judgeIndex -= 1;
       }
-      this.czarIndex = this.czarOrder.length > 0 ? this.czarIndex % this.czarOrder.length : 0;
+      this.judgeIndex = this.judgeOrder.length > 0 ? this.judgeIndex % this.judgeOrder.length : 0;
     }
 
     const wasHost = player.isHost;
     this.players.delete(playerId);
 
     if (wasHost) {
-      const candidates = [...this.players.values()].filter((p) => !p.isRando);
+      const candidates = [...this.players.values()].filter((p) => !p.isWildCard);
       const next = candidates.find((p) => p.connected) ?? candidates[0];
       if (next) next.isHost = true;
     }
@@ -592,7 +602,20 @@ export class Room {
   updateHouseRules(playerId: string, rules: Partial<HouseRules>): void {
     this.requireLobbyAuthority(playerId);
     this.requireLobby();
-    this.houseRules = { ...this.houseRules, ...rules };
+    this.houseRules = { ...this.houseRules, ...migrateLegacyHouseRules(rules) };
+    this.broadcast();
+  }
+
+  /** Renames the Judge and/or the Wild Card bot for this room. Lobby-only,
+   * like the house rules it sits beside. The bot is only seated at game
+   * start, but Play Again returns here with it still seated, so it is
+   * renamed in place too. */
+  updateRoleNames(playerId: string, names: Partial<RoleNames>): void {
+    this.requireLobbyAuthority(playerId);
+    this.requireLobby();
+    this.roleNames = normalizeRoleNames({ ...this.roleNames, ...names }, this.roleNames);
+    const bot = this.players.get(WILD_CARD_PLAYER_ID);
+    if (bot) bot.name = this.roleNames.wildCard;
     this.broadcast();
   }
 
@@ -684,7 +707,11 @@ export class Room {
    * preset system, and having two mechanisms fight over the same setting
    * would be worse than each doing less.
    */
-  applyGameSetup(playerId: string, setup: GameSetup): void {
+  applyGameSetup(playerId: string, rawSetup: GameSetup): void {
+    // A preset saved before the Judge/Wild Card rename still says
+    // randoCardrissian / czar_accent - map it forward rather than silently
+    // dropping those settings.
+    const setup = migrateLegacyGameSetup(rawSetup);
     this.requireLobbyAuthority(playerId);
     this.requireLobby();
 
@@ -835,7 +862,7 @@ export class Room {
       throw new RoomError("NO_PACKS", "Pick at least one pack (or enable custom cards) before starting.");
     }
 
-    const realPlayers = [...this.players.values()].filter((p) => p.role === "player" && !p.isRando);
+    const realPlayers = [...this.players.values()].filter((p) => p.role === "player" && !p.isWildCard);
     const minPlayers = minPlayersToStart(this.houseRules);
     if (realPlayers.length < minPlayers) {
       throw new RoomError(
@@ -863,11 +890,11 @@ export class Room {
         .join(",") || "none",
     });
 
-    if (this.houseRules.randoCardrissian) {
-      const rando = createRandoPlayer();
-      this.players.set(rando.id, rando);
+    if (this.houseRules.wildCard) {
+      const wildCard = createWildCardPlayer(this.roleNames.wildCard);
+      this.players.set(wildCard.id, wildCard);
     } else {
-      this.players.delete(RANDO_PLAYER_ID);
+      this.players.delete(WILD_CARD_PLAYER_ID);
     }
 
     for (const player of realPlayers) {
@@ -888,20 +915,20 @@ export class Room {
     }
   }
 
-  /** Shuffles the Czar rotation and deals the first round - either called
+  /** Shuffles the Judge rotation and deals the first round - either called
    * directly from startGame() (Personal Cards off) or once the writing
-   * window's timer fires (see startGame()). czarOrder is built fresh from
+   * window's timer fires (see startGame()). judgeOrder is built fresh from
    * *current* players, not the realPlayers snapshot from startGame(), so
    * anyone who joined mid-window is automatically included. */
   private beginFirstRound(): void {
     this.personalCardsDeadline = null;
     for (const player of this.players.values()) {
-      if (player.role !== "player" || player.isRando) continue;
+      if (player.role !== "player" || player.isWildCard) continue;
       player.personalDeck = shuffle(player.personalCards);
     }
-    const realPlayers = [...this.players.values()].filter((p) => p.role === "player" && !p.isRando);
-    this.czarOrder = shuffle(realPlayers.map((p) => p.id));
-    this.czarIndex = 0;
+    const realPlayers = [...this.players.values()].filter((p) => p.role === "player" && !p.isWildCard);
+    this.judgeOrder = shuffle(realPlayers.map((p) => p.id));
+    this.judgeIndex = 0;
     this.dealPhase();
   }
 
@@ -929,7 +956,7 @@ export class Room {
   /** Host-only, gameEnd only — wipes scores/hands/won black cards for a
    * fresh game with the same players and settings, and drops back to the
    * Lobby so the host can tweak anything before hitting Start Game again
-   * (which already rebuilds the deck and reshuffles the Czar order). */
+   * (which already rebuilds the deck and reshuffles the Judge order). */
   playAgain(playerId: string): void {
     this.requireHost(playerId);
     if (this.phase !== "gameEnd") throw new RoomError("WRONG_PHASE", "Can only start a new game once one has ended.");
@@ -937,20 +964,20 @@ export class Room {
     this.broadcast();
   }
 
-  /** Shared by playAgain and kickPlayer's "kicking the Czar dropped the
+  /** Shared by playAgain and kickPlayer's "kicking the Judge dropped the
    * rotation below 2" path - a full reset back to a clean Lobby (scores,
-   * hands, discard piles, Rando's own player entry, Czar rotation), not
+   * hands, discard piles, Wild Card's own player entry, Judge rotation), not
    * just a phase flip. Without this, that kick path left stale state
-   * lingering - most importantly Rando Cardrissian's player entry, which
+   * lingering - most importantly Wild Card's player entry, which
    * startGame()'s realPlayers filter didn't exclude either, so a later
-   * Start Game could shuffle that stale Rando entry into the Czar
-   * rotation. Rando has no client to actually drive a round if picked, so
+   * Start Game could shuffle that stale Wild Card entry into the Judge
+   * rotation. Wild Card has no client to actually drive a round if picked, so
    * this effectively handed judge control to the Shared Screen instead
-   * (see requireJudgeAuthority's Table-mirrors-Czar trust) - the bug
-   * behind "someone other than the human players became the Czar". */
+   * (see requireJudgeAuthority's Table-mirrors-Judge trust) - the bug
+   * behind "someone other than the human players became the Judge". */
   private resetToLobby(): void {
     for (const player of this.players.values()) {
-      if (player.isRando) continue;
+      if (player.isWildCard) continue;
       this.discardWhite(player.hand);
       player.hand = [];
       this.blackDiscard.push(...player.wonBlackCards);
@@ -962,7 +989,7 @@ export class Room {
       player.personalCards = [];
       player.personalDeck = [];
     }
-    this.players.delete(RANDO_PLAYER_ID);
+    this.players.delete(WILD_CARD_PLAYER_ID);
 
     this.submissions.clear();
     this.pendingDoubleDown.clear();
@@ -976,8 +1003,8 @@ export class Room {
     this.roundHistory = [];
     this.roundsPlayed = 0;
     this.finalResult = undefined;
-    this.czarOrder = [];
-    this.czarIndex = 0;
+    this.judgeOrder = [];
+    this.judgeIndex = 0;
 
     this.phase = "lobby";
   }
@@ -985,7 +1012,7 @@ export class Room {
   /** Shared by skipBlackCard and submitCustomBlackCard: anyone who'd
    * already submitted for the discarded black card gets those cards (and
    * any Double Down stake) back in hand rather than losing them - neither
-   * a skip nor a Czar-authored replacement is the submitter's fault. */
+   * a skip nor a Judge-authored replacement is the submitter's fault. */
   private returnSubmissionsToHands(): void {
     for (const entry of this.submissions.values()) {
       const owner = this.players.get(entry.playerId);
@@ -1006,29 +1033,29 @@ export class Room {
     this.doubleDownDeadline = null;
   }
 
-  /** Rando still needs a fresh auto-submission whenever the black card
+  /** Wild Card still needs a fresh auto-submission whenever the black card
    * changes mid-Submission (skip or a custom prompt) - dealPhase()'s
    * version runs once per round, this is the same logic for that case. */
-  private autoSubmitRandoIfEnabled(): void {
-    if (!this.houseRules.randoCardrissian || !this.currentBlackCard) return;
-    const rando = this.players.get(RANDO_PLAYER_ID);
-    if (!rando) return;
-    const cards = autoSubmitRando(rando, this.currentBlackCard);
+  private autoSubmitWildCardIfEnabled(): void {
+    if (!this.houseRules.wildCard || !this.currentBlackCard) return;
+    const wildCard = this.players.get(WILD_CARD_PLAYER_ID);
+    if (!wildCard) return;
+    const cards = autoSubmitWildCard(wildCard, this.currentBlackCard);
     if (cards.length === this.currentBlackCard.pick) {
       const submissionId = nanoid(10);
-      this.submissions.set(submissionId, { submissionId, playerId: rando.id, cards, isDoubleDown: false });
+      this.submissions.set(submissionId, { submissionId, playerId: wildCard.id, cards, isDoubleDown: false });
     }
   }
 
-  /** Host or the current Czar (not Table - it's a judgment call about the
+  /** Host or the current Judge (not Table - it's a judgment call about the
    * round's content, not a display setting) can bail on a bad prompt during
    * Submission and draw a new one. */
   skipBlackCard(playerId: string): void {
     const player = this.players.get(playerId);
     if (!player) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
-    const isCzar = player.id === this.currentCzarId();
-    if (!player.isHost && !isCzar) {
-      throw new RoomError("NOT_HOST", "Only the host or the Card Czar can skip the black card.");
+    const isJudge = player.id === this.currentJudgeId();
+    if (!player.isHost && !isJudge) {
+      throw new RoomError("NOT_HOST", `Only the host or the ${this.roleNames.judge} can skip the black card.`);
     }
     if (this.phase !== "submission") {
       throw new RoomError("WRONG_PHASE", "Can only skip the black card during submission.");
@@ -1038,31 +1065,31 @@ export class Room {
     this.returnSubmissionsToHands();
     this.blackDiscard.push(this.currentBlackCard);
     this.currentBlackCard = this.drawBlackCard();
-    this.autoSubmitRandoIfEnabled();
+    this.autoSubmitWildCardIfEnabled();
     this.broadcast();
   }
 
-  /** Host or the current Czar - bows out of judging this round (AFK, or
+  /** Host or the current Judge - bows out of judging this round (AFK, or
    * just don't want to), handing it to the next player in rotation and
    * redealing. Same "return in-flight submissions" handling as Skip Card;
-   * unlike kicking the Czar, nobody's removed, so the rotation just moves
+   * unlike kicking the Judge, nobody's removed, so the rotation just moves
    * on and this player gets their normal turn again next time it comes
    * around. */
-  skipCzarTurn(playerId: string): void {
+  skipJudgeTurn(playerId: string): void {
     const player = this.players.get(playerId);
     if (!player) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
-    const isCzar = player.id === this.currentCzarId();
-    if (!player.isHost && !isCzar) {
-      throw new RoomError("NOT_HOST", "Only the host or the current Czar can skip the Czar's turn.");
+    const isJudge = player.id === this.currentJudgeId();
+    if (!player.isHost && !isJudge) {
+      throw new RoomError("NOT_HOST", `Only the host or the current ${this.roleNames.judge} can skip the ${this.roleNames.judge}'s turn.`);
     }
     if (this.phase !== "submission" && this.phase !== "reveal" && this.phase !== "judging") {
-      throw new RoomError("WRONG_PHASE", "Can only skip the Czar's turn while a round is in progress.");
+      throw new RoomError("WRONG_PHASE", `Can only skip the ${this.roleNames.judge}'s turn while a round is in progress.`);
     }
-    if (this.czarOrder.length === 0) throw new RoomError("NO_CZAR", "No Czar rotation to skip.");
+    if (this.judgeOrder.length === 0) throw new RoomError("NO_JUDGE", `No ${this.roleNames.judge} rotation to skip.`);
 
     this.returnSubmissionsToHands();
     if (this.currentBlackCard) this.blackDiscard.push(this.currentBlackCard);
-    this.czarIndex = (this.czarIndex + 1) % this.czarOrder.length;
+    this.judgeIndex = (this.judgeIndex + 1) % this.judgeOrder.length;
     this.dealPhase();
   }
 
@@ -1076,11 +1103,11 @@ export class Room {
       throw new RoomError("WRONG_PHASE", "Can only skip a player's turn during submission.");
     }
     const target = this.players.get(targetId);
-    if (!target || target.role !== "player" || target.isRando) {
+    if (!target || target.role !== "player" || target.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "That's not a player who can be excused.");
     }
-    if (target.id === this.currentCzarId() && !this.isVotingRound()) {
-      throw new RoomError("IS_CZAR", "The Czar isn't a required submitter this round — use Skip Turn instead if they're stuck.");
+    if (target.id === this.currentJudgeId() && !this.isVotingRound()) {
+      throw new RoomError("IS_JUDGE", `The ${this.roleNames.judge} isn't a required submitter this round — use Skip Turn instead if they're stuck.`);
     }
     if (this.hasNormalSubmission(targetId)) {
       throw new RoomError("ALREADY_SUBMITTED", "That player already submitted this round.");
@@ -1090,15 +1117,15 @@ export class Room {
     this.broadcast();
   }
 
-  /** The Card Czar writes their own black card for the round instead of
+  /** The Judge writes their own black card for the round instead of
    * drawing one - same "return in-flight submissions" handling as skip. */
-  submitCustomBlackCard(czarId: string, text: string, pick: number): void {
+  submitCustomBlackCard(judgeId: string, text: string, pick: number): void {
     if (!this.houseRules.customPrompts) {
       throw new RoomError("RULE_DISABLED", "Custom Prompts isn't enabled for this game.");
     }
-    const player = this.players.get(czarId);
-    if (!player || player.id !== this.currentCzarId()) {
-      throw new RoomError("NOT_CZAR", "Only the Card Czar can write a custom prompt.");
+    const player = this.players.get(judgeId);
+    if (!player || player.id !== this.currentJudgeId()) {
+      throw new RoomError("NOT_JUDGE", `Only the ${this.roleNames.judge} can write a custom prompt.`);
     }
     if (this.phase !== "submission") {
       throw new RoomError("WRONG_PHASE", "Can only set a custom prompt during submission.");
@@ -1110,7 +1137,7 @@ export class Room {
     this.returnSubmissionsToHands();
     if (this.currentBlackCard) this.blackDiscard.push(this.currentBlackCard);
     this.currentBlackCard = { id: nanoid(10), text: cleanText, pick: cleanPick, pack: "custom-prompt" };
-    this.autoSubmitRandoIfEnabled();
+    this.autoSubmitWildCardIfEnabled();
     this.broadcast();
   }
 
@@ -1123,7 +1150,7 @@ export class Room {
       throw new RoomError("WRONG_PHASE", "You can only refresh your hand during submission.");
     }
     const player = this.players.get(playerId);
-    if (!player || player.role !== "player" || player.isRando) {
+    if (!player || player.role !== "player" || player.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "Only players refresh their hand.");
     }
     if (this.hasNormalSubmission(playerId)) {
@@ -1203,16 +1230,16 @@ export class Room {
     // shadow pool checked probabilistically on every draw) - mixed in here,
     // before the shuffle, at a percentage of the real (post-filter) white
     // count so the rarity stays consistent regardless of how many packs are
-    // selected. Rando is kept off them separately (see dealPhase()'s
-    // drawNonActionCardForRando) since they're now indistinguishable from
+    // selected. Wild Card is kept off them separately (see dealPhase()'s
+    // drawNonActionCardForWildCard) since they're now indistinguishable from
     // any other white card at the deck level.
     if (this.houseRules.actionCards && white.length > 0) {
       const tiers = resolveTiers(this.actionCardTiers);
-      const realPlayerCount = [...this.players.values()].filter((p) => p.role === "player" && !p.isRando).length;
+      const realPlayerCount = [...this.players.values()].filter((p) => p.role === "player" && !p.isWildCard).length;
       const defs = ACTION_CARD_DEFS
-        // Cards that only make sense with a Czar are left out entirely under
+        // Cards that only make sense with a Judge are left out entirely under
         // Crowd Favorite, rather than being drawable and then refused.
-        .filter((d) => !(d.requiresCzarMode && this.houseRules.crowdFavorite))
+        .filter((d) => !(d.requiresJudgeMode && this.houseRules.crowdFavorite))
         // Same idea for a card that needs a real electorate (Democracy) -
         // left out below its floor rather than drawable and then refused.
         .filter((d) => !d.minRealPlayers || realPlayerCount >= d.minRealPlayers)
@@ -1272,28 +1299,28 @@ export class Room {
    * shared deck - falls back to drawWhiteCard() once that stash is empty.
    * Action Cards are ordinary entries in the shared deck now (see
    * buildDecks()), so no special-casing is needed here - any real player
-   * can draw one through the normal shuffle. Rando is kept off them via a
-   * dedicated draw path (see drawNonActionCardForRando below), not this
-   * method - Rando never calls drawWhiteCardFor() at all (its hand-fill
+   * can draw one through the normal shuffle. Wild Card is kept off them via a
+   * dedicated draw path (see drawNonActionCardForWildCard below), not this
+   * method - Wild Card never calls drawWhiteCardFor() at all (its hand-fill
    * uses a raw drawWhiteCard() callback, see dealPhase()). */
   private drawWhiteCardFor(player: ServerPlayer): WhiteCard | null {
     if (player.personalDeck.length > 0) return player.personalDeck.pop()!;
     return this.drawWhiteCard();
   }
 
-  /** Rando's dedicated draw path (see dealPhase()) - identical to
+  /** Wild Card's dedicated draw path (see dealPhase()) - identical to
    * drawWhiteCard() except it never lets an Action Card through. A skipped
    * Action Card is slotted back in just one card deeper than where it was
    * (not shuffled, not sent to the bottom of a potentially huge deck) -
-   * Rando just quietly passes over it, and it comes right back up as the
+   * Wild Card just quietly passes over it, and it comes right back up as the
    * very next draw for whoever's next in line. It can't go back in the
    * *exact* same spot (drawWhiteCard() pops from the top), since that would
-   * just hand Rando the same card again next attempt, forever.
+   * just hand Wild Card the same card again next attempt, forever.
    * Bounded: if every real white card is currently out in players' hands
    * and only Action Cards remain in the deck, cycling through them could
-   * otherwise spin forever - give up and let Rando simply not draw this
+   * otherwise spin forever - give up and let Wild Card simply not draw this
    * time, same as the ordinary "deck's genuinely empty" case elsewhere. */
-  private drawNonActionCardForRando(): WhiteCard | null {
+  private drawNonActionCardForWildCard(): WhiteCard | null {
     for (let attempt = 0; attempt < 200; attempt++) {
       const card = this.drawWhiteCard();
       if (!card) return null;
@@ -1320,8 +1347,8 @@ export class Room {
     return this.blackDeck.pop() ?? null;
   }
 
-  private currentCzarId(): string | null {
-    return this.czarOrder[this.czarIndex] ?? null;
+  private currentJudgeId(): string | null {
+    return this.judgeOrder[this.judgeIndex] ?? null;
   }
 
   private dealPhase(): void {
@@ -1336,10 +1363,10 @@ export class Room {
 
     // Trim any hand that's grown past handSize back down to the cap before
     // this round's own top-up/bonus runs - most commonly a Pick Bonus card
-    // nobody spent (e.g. the Czar, who doesn't submit). The bonus is meant
+    // nobody spent (e.g. the Judge, who doesn't submit). The bonus is meant
     // to help through *that* round, not accumulate round over round.
     for (const player of this.players.values()) {
-      if (player.role !== "player" || player.isRando) continue;
+      if (player.role !== "player" || player.isWildCard) continue;
       if (player.hand.length > this.handSize) {
         const excess = player.hand.splice(this.handSize);
         this.discardWhite(excess);
@@ -1348,18 +1375,18 @@ export class Room {
 
     // Real players draw their own hands manually by default (see
     // drawCards) — a deliberate departure from CLAUDE.md's original
-    // auto-fill description. Rando has no client to click a button, so it
+    // auto-fill description. Wild Card has no client to click a button, so it
     // still auto-deals regardless. With the Auto Draw house rule on, real
     // players get the same top-up here too - otherwise Auto Draw only ever
     // covered the post-submission refill, leaving every round's starting
     // hand (most visibly the very first one) still stuck on manual draw.
-    if (this.houseRules.randoCardrissian) {
-      const rando = this.players.get(RANDO_PLAYER_ID);
-      if (rando) dealToRando(rando, () => this.drawNonActionCardForRando(), this.handSize);
+    if (this.houseRules.wildCard) {
+      const wildCard = this.players.get(WILD_CARD_PLAYER_ID);
+      if (wildCard) dealToWildCard(wildCard, () => this.drawNonActionCardForWildCard(), this.handSize);
     }
     if (this.houseRules.autoDraw) {
       for (const player of this.players.values()) {
-        if (player.role !== "player" || player.isRando || !player.connected) continue;
+        if (player.role !== "player" || player.isWildCard || !player.connected) continue;
         if (this.blockedFromDrawingIds.has(player.id)) continue;
         while (player.hand.length < this.handSize) {
           const card = this.drawWhiteCardFor(player);
@@ -1379,7 +1406,7 @@ export class Room {
     // independent of current hand fullness - deliberately simple.
     if (this.houseRules.pickBonus && this.currentBlackCard && this.currentBlackCard.pick >= 2) {
       for (const player of this.players.values()) {
-        if (player.role !== "player" || player.isRando || !player.connected) continue;
+        if (player.role !== "player" || player.isWildCard || !player.connected) continue;
         if (this.blockedFromDrawingIds.has(player.id)) continue;
         const card = this.drawWhiteCardFor(player);
         if (card) player.hand.push(card);
@@ -1396,7 +1423,7 @@ export class Room {
     this.midGameExcused.clear();
     this.phase = "submission";
 
-    this.autoSubmitRandoIfEnabled();
+    this.autoSubmitWildCardIfEnabled();
 
     this.broadcast();
   }
@@ -1406,7 +1433,7 @@ export class Room {
   addPersonalCard(playerId: string, text: string): void {
     if (this.phase !== "personalCards") throw new RoomError("WRONG_PHASE", "The personal-card window isn't open.");
     const player = this.players.get(playerId);
-    if (!player || player.role !== "player" || player.isRando) {
+    if (!player || player.role !== "player" || player.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "Only players write personal cards.");
     }
     const cleanText = text.trim().slice(0, 200);
@@ -1455,7 +1482,7 @@ export class Room {
   private maybeShortenPersonalCardsWindow(): void {
     if (this.phase !== "personalCards" || !this.personalCardsDeadline) return;
     const writers = [...this.players.values()].filter(
-      (p) => p.role === "player" && !p.isRando && p.connected
+      (p) => p.role === "player" && !p.isWildCard && p.connected
     );
     if (writers.length === 0) return;
     if (!writers.every((p) => p.personalCards.length >= this.personalCardsMaxCount)) return;
@@ -1484,7 +1511,7 @@ export class Room {
   drawCards(playerId: string): void {
     if (this.phase !== "submission") throw new RoomError("WRONG_PHASE", "You can only draw during submission.");
     const player = this.players.get(playerId);
-    if (!player || player.role !== "player" || player.isRando) {
+    if (!player || player.role !== "player" || player.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "Only players draw cards.");
     }
     if (this.blockedFromDrawingIds.has(playerId)) {
@@ -1500,11 +1527,11 @@ export class Room {
     if (!this.houseRules.tradeIn) throw new RoomError("RULE_DISABLED", "Trade-In isn't enabled for this game.");
     if (this.phase !== "submission") throw new RoomError("WRONG_PHASE", "You can only trade in during submission.");
     const player = this.players.get(playerId);
-    if (!player || player.role !== "player" || player.isRando) {
+    if (!player || player.role !== "player" || player.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "Only players trade in cards.");
     }
-    if (!this.isVotingRound() && player.id === this.currentCzarId()) {
-      throw new RoomError("YOU_ARE_CZAR", "The Czar doesn't trade in cards this round.");
+    if (!this.isVotingRound() && player.id === this.currentJudgeId()) {
+      throw new RoomError("YOU_ARE_JUDGE", `The ${this.roleNames.judge} doesn't trade in cards this round.`);
     }
     if (this.hasNormalSubmission(playerId)) throw new RoomError("ALREADY_SUBMITTED", "You already submitted this round.");
     if (cardIds.length === 0) throw new RoomError("NOTHING_TO_TRADE", "Select at least one card to trade in.");
@@ -1545,7 +1572,7 @@ export class Room {
     if (!this.houseRules.actionCards) throw new RoomError("RULE_DISABLED", "Action Cards aren't enabled for this game.");
     if (this.phase !== "submission") throw new RoomError("WRONG_PHASE", "You can only play an Action Card during submission.");
     const player = this.players.get(playerId);
-    if (!player || player.role !== "player" || player.isRando) {
+    if (!player || player.role !== "player" || player.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "Only players play Action Cards.");
     }
     const cardIndex = player.hand.findIndex((c) => c.id === cardId);
@@ -1559,7 +1586,7 @@ export class Room {
       if (!targetPlayerId) throw new RoomError("NO_TARGET", "Choose a player to target.");
       if (targetPlayerId === playerId) throw new RoomError("BAD_TARGET", "You can't target yourself.");
       target = this.players.get(targetPlayerId);
-      if (!target || target.role !== "player" || target.isRando) {
+      if (!target || target.role !== "player" || target.isWildCard) {
         throw new RoomError("BAD_TARGET", "That's not a valid target.");
       }
     }
@@ -1590,12 +1617,12 @@ export class Room {
         if (this.houseRules.crowdFavorite) {
           throw new RoomError("RULE_DISABLED", "Every round is already put to a vote in Crowd Favorite.");
         }
-        if ([...this.players.values()].filter((p) => p.role === "player" && !p.isRando).length < (def.minRealPlayers ?? 0)) {
+        if ([...this.players.values()].filter((p) => p.role === "player" && !p.isWildCard).length < (def.minRealPlayers ?? 0)) {
           throw new RoomError("NOT_ENOUGH_PLAYERS", "Not enough real players left for a meaningful vote.");
         }
-        // Playing this turns the Czar into a contestant for the round, so
+        // Playing this turns the Judge into a contestant for the round, so
         // it has to land before the actor commits their own card - that
-        // way the round can't already be complete when the Czar is
+        // way the round can't already be complete when the Judge is
         // suddenly added to the required submitters.
         if (this.hasNormalSubmission(playerId)) {
           throw new RoomError("ALREADY_SUBMITTED", "Play Democracy before you submit your own card.");
@@ -1667,14 +1694,14 @@ export class Room {
       }
       case "democracy": {
         this.democracyThisRound = true;
-        this.pendingJudgingMessage = def.description;
+        this.pendingJudgingMessage = fillRoleNames(def.description, this.roleNames);
         break;
       }
       default: {
-        // Every "flavor"-shape card (e.g. czar_accent): no state change,
+        // Every "flavor"-shape card (e.g. judge_accent): no state change,
         // just a judging-time instruction surfaced once the round reaches
         // Judging (see buildStateFor's pendingJudgingMessage).
-        this.pendingJudgingMessage = def.description;
+        this.pendingJudgingMessage = fillRoleNames(def.description, this.roleNames);
         break;
       }
     }
@@ -1688,8 +1715,8 @@ export class Room {
     if (this.phase !== "submission") throw new RoomError("WRONG_PHASE", "Not accepting submissions right now.");
     const player = this.players.get(playerId);
     if (!player || player.role !== "player") throw new RoomError("NOT_A_PLAYER", "Only players submit cards.");
-    if (!this.isVotingRound() && player.id === this.currentCzarId()) {
-      throw new RoomError("YOU_ARE_CZAR", "The Czar doesn't submit a card.");
+    if (!this.isVotingRound() && player.id === this.currentJudgeId()) {
+      throw new RoomError("YOU_ARE_JUDGE", `The ${this.roleNames.judge} doesn't submit a card.`);
     }
     if (this.hasNormalSubmission(playerId)) throw new RoomError("ALREADY_SUBMITTED", "You already submitted this round.");
     if (!this.currentBlackCard) throw new RoomError("NO_BLACK_CARD", "No black card in play.");
@@ -1754,7 +1781,7 @@ export class Room {
   unsubmitCards(playerId: string): void {
     if (this.phase !== "submission") throw new RoomError("WRONG_PHASE", "Too late to take that back.");
     const player = this.players.get(playerId);
-    if (!player || player.role !== "player" || player.isRando) {
+    if (!player || player.role !== "player" || player.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "Only players submit cards.");
     }
 
@@ -1805,9 +1832,9 @@ export class Room {
   /** Whether any required submitter other than `exceptPlayerId` still has a
    * card to play. Mirrors maybeAdvanceToReveal's notion of "required". */
   private someoneStillToSubmit(exceptPlayerId: string): boolean {
-    const czarId = this.currentCzarId();
-    const required = this.czarOrder
-      .filter((id) => this.isVotingRound() || id !== czarId)
+    const judgeId = this.currentJudgeId();
+    const required = this.judgeOrder
+      .filter((id) => this.isVotingRound() || id !== judgeId)
       .filter((id) => this.players.get(id)?.connected)
       .filter((id) => !this.midGameExcused.has(id))
       .filter((id) => id !== exceptPlayerId);
@@ -1853,12 +1880,12 @@ export class Room {
   }
 
   private maybeAdvanceToReveal(): void {
-    const czarId = this.currentCzarId();
-    // Crowd Favorite: nobody's exempt from submitting - there's no Czar to
-    // judge, everyone (including whoever czarOrder currently points at) is
+    const judgeId = this.currentJudgeId();
+    // Crowd Favorite: nobody's exempt from submitting - there's no Judge to
+    // judge, everyone (including whoever judgeOrder currently points at) is
     // a contestant.
-    const required = this.czarOrder
-      .filter((id) => this.isVotingRound() || id !== czarId)
+    const required = this.judgeOrder
+      .filter((id) => this.isVotingRound() || id !== judgeId)
       .filter((id) => this.players.get(id)?.connected)
       .filter((id) => !this.midGameExcused.has(id));
     const submitted = new Set([...this.submissions.values()].map((s) => s.playerId));
@@ -1900,14 +1927,14 @@ export class Room {
     this.phase = "reveal";
     this.judgingOrder = shuffle([...this.submissions.keys()]);
     this.revealedIds.clear();
-    // Crowd Favorite / Democracy: there's no Czar driving a one-at-a-time
+    // Crowd Favorite / Democracy: there's no Judge driving a one-at-a-time
     // reveal in a vote - everyone eligible needs to see every card at once
     // to vote, so skip the face-down suspense entirely and land straight
     // in judging with the whole lineup already flipped. Without this,
-    // revealSubmission's Czar/Table-only gate (requireJudgeAuthority) left
-    // whichever player the czar rotation still happens to point at as the
+    // revealSubmission's Judge/Table-only gate (requireJudgeAuthority) left
+    // whichever player the judge rotation still happens to point at as the
     // sole person able to flip cards for everyone else to vote on - a real
-    // bug, not just a missing nicety, since "No Card Czar in this mode" is
+    // bug, not just a missing nicety, since "No Judge in this mode" is
     // the whole point of a voting round.
     if (this.isVotingRound()) {
       for (const id of this.judgingOrder) this.revealedIds.add(id);
@@ -1921,26 +1948,26 @@ export class Room {
   private requireJudgeAuthority(senderId: string): ServerPlayer {
     const sender = this.players.get(senderId);
     if (!sender) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
-    // The Table mirrors whichever player is currently Czar (CLAUDE.md), so
-    // input from the Table is trusted the same as the Czar's own phone.
-    const isCzar = sender.id === this.currentCzarId();
+    // The Table mirrors whichever player is currently Judge (CLAUDE.md), so
+    // input from the Table is trusted the same as the Judge's own phone.
+    const isJudge = sender.id === this.currentJudgeId();
     const isTableMirror = sender.role === "table";
-    if (!isCzar && !isTableMirror) throw new RoomError("NOT_CZAR", "Only the Card Czar can do that.");
+    if (!isJudge && !isTableMirror) throw new RoomError("NOT_JUDGE", `Only the ${this.roleNames.judge} can do that.`);
     return sender;
   }
 
-  /** Deliberately broader than requireJudgeAuthority (Czar/Table only) -
+  /** Deliberately broader than requireJudgeAuthority (Judge/Table only) -
    * this is a display/cosmetic setting, not a judging action, so the host
    * also gets it (matching setTableScale's Lobby-only host access, but
    * usable any phase - the host may want to resize the Shared Screen
-   * mid-game too, not just before a Czar exists). */
+   * mid-game too, not just before a Judge exists). */
   adjustTableScale(senderId: string, delta: number): void {
     const sender = this.players.get(senderId);
     if (!sender) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
-    const isCzar = sender.id === this.currentCzarId();
+    const isJudge = sender.id === this.currentJudgeId();
     const isTableMirror = sender.role === "table";
-    if (!isCzar && !isTableMirror && !sender.isHost) {
-      throw new RoomError("NOT_CZAR", "Only the Card Czar, the host, or the Shared Screen can do that.");
+    if (!isJudge && !isTableMirror && !sender.isHost) {
+      throw new RoomError("NOT_JUDGE", `Only the ${this.roleNames.judge}, the host, or the Shared Screen can do that.`);
     }
     const next = Math.round((this.tableScale + delta) * 100) / 100;
     this.tableScale = Math.min(MAX_TABLE_SCALE, Math.max(MIN_TABLE_SCALE, next));
@@ -1965,7 +1992,7 @@ export class Room {
     if (this.revealedIds.has(submissionId)) return;
     this.revealedIds.add(submissionId);
     if (this.phase === "reveal") this.phase = "judging";
-    // Whichever device (Table or the Czar's own phone) triggers the reveal,
+    // Whichever device (Table or the Judge's own phone) triggers the reveal,
     // the spotlight should open the same way on both - not just locally on
     // whoever tapped it.
     if (this.tableStyle.spotlightEnabled) this.spotlightId = submissionId;
@@ -1989,7 +2016,7 @@ export class Room {
     this.broadcast();
   }
 
-  czarPick(senderId: string, submissionId: string): void {
+  judgePick(senderId: string, submissionId: string): void {
     if (this.houseRules.crowdFavorite) {
       throw new RoomError("RULE_DISABLED", "Crowd Favorite is on — vote instead of picking.");
     }
@@ -2004,10 +2031,10 @@ export class Room {
     this.finishRound(submissionId);
   }
 
-  /** No Card Czar in this mode - everyone (who submitted) votes once for a
+  /** No Judge in this mode - everyone (who submitted) votes once for a
    * revealed card that isn't their own; re-castable until the round
    * resolves, which happens automatically once every eligible voter's in. */
-  /** True when the winner is decided by vote rather than by the Czar -
+  /** True when the winner is decided by vote rather than by the Judge -
    * Crowd Favorite for the whole game, or Democracy for this round only. */
   private isVotingRound(): boolean {
     return this.houseRules.crowdFavorite || this.democracyThisRound;
@@ -2016,13 +2043,13 @@ export class Room {
   /** Who has to vote before the round can resolve: everyone with a card
    * in the lineup. */
   private eligibleVoters(): ServerPlayer[] {
-    // Under both Crowd Favorite and Democracy the Czar submits a card like
+    // Under both Crowd Favorite and Democracy the Judge submits a card like
     // everyone else, so "everyone with a card in the lineup" already covers
-    // the whole table - no special case for the Czar.
+    // the whole table - no special case for the Judge.
     const ids = new Set([...this.submissions.values()].map((s) => s.playerId));
     return [...ids]
       .map((id) => this.players.get(id))
-      .filter((p): p is ServerPlayer => !!p && p.role === "player" && !p.isRando);
+      .filter((p): p is ServerPlayer => !!p && p.role === "player" && !p.isWildCard);
   }
 
   voteForSubmission(playerId: string, submissionId: string): void {
@@ -2032,7 +2059,7 @@ export class Room {
       throw new RoomError("NOT_REVEALED", "Reveal this card before voting for it.");
     }
     const voter = this.players.get(playerId);
-    if (!voter || voter.role !== "player" || voter.isRando) {
+    if (!voter || voter.role !== "player" || voter.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "Only players vote.");
     }
     const entry = this.submissions.get(submissionId);
@@ -2058,7 +2085,7 @@ export class Room {
     this.finishRound(winningSubmissionId);
   }
 
-  /** Shared by czarPick and the Crowd Favorite vote-tally resolution:
+  /** Shared by judgePick and the Crowd Favorite vote-tally resolution:
    * scores the winner, resolves any wagered Double Down entries, and
    * schedules the roundEnd -> next round/gameEnd transition. */
   private finishRound(submissionId: string): void {
@@ -2071,20 +2098,20 @@ export class Room {
 
     this.spotlightId = null;
     this.pendingJudgingMessage = null;
-    // Rando's own score still climbs every time it wins a round, even with
-    // Rando Can Win off - a host wants to see how it's doing, not just a
-    // frozen 0 (previously this increment was skipped entirely when Rando
+    // Wild Card's own score still climbs every time it wins a round, even with
+    // Wild Card Can Win off - a host wants to see how it's doing, not just a
+    // frozen 0 (previously this increment was skipped entirely when Wild Card
     // couldn't win, so the Scoreboard could never show anything but 0 for
     // it). Whether that score counts toward *ending the game* is a
     // separate question, decided at the win-condition check below via the
-    // same `!isRando || randoCanScore` gate `buildFinalResult()` already
-    // uses - so Rando can happily sail past the target with no effect on
+    // same `!isWildCard || wildCardCanScore` gate `buildFinalResult()` already
+    // uses - so Wild Card can happily sail past the target with no effect on
     // anyone else's game. wonBlackCards (the Double Down/Trade-In currency)
-    // stays gated off for Rando regardless of randoCanScore - it has no
+    // stays gated off for Wild Card regardless of wildCardCanScore - it has no
     // client to ever spend it, so granting it would be pure dead state,
     // independent of whether its score counts or is merely displayed.
     winner.score += 1;
-    if (!winner.isRando) {
+    if (!winner.isWildCard) {
       winner.wonBlackCards.push(this.currentBlackCard);
     }
 
@@ -2137,11 +2164,11 @@ export class Room {
       // ahead; buildFinalResult() then ranks by score as usual (and
       // already treats a shared top score as a tie). In "blackCards" mode,
       // a win only counts toward ending the game when this round's winner
-      // is actually eligible to win the game - Rando's score keeps
+      // is actually eligible to win the game - Wild Card's score keeps
       // climbing regardless (see finishRound above) so it can visibly sail
       // past the target, but that alone must never end the game when
-      // Rando Can Win is off. Same gate buildFinalResult() already uses.
-      const winnerCountsTowardEnding = !winner.isRando || this.houseRules.randoCanScore;
+      // Wild Card Can Win is off. Same gate buildFinalResult() already uses.
+      const winnerCountsTowardEnding = !winner.isWildCard || this.houseRules.wildCardCanScore;
       const reachedEnd =
         this.winCondition.mode === "rounds"
           ? this.roundsPlayed >= this.winCondition.target
@@ -2150,7 +2177,7 @@ export class Room {
         this.finalResult = this.buildFinalResult();
         this.phase = "gameEnd";
       } else {
-        this.czarIndex = (this.czarIndex + 1) % this.czarOrder.length;
+        this.judgeIndex = (this.judgeIndex + 1) % this.judgeOrder.length;
         this.dealPhase();
         return;
       }
@@ -2160,7 +2187,7 @@ export class Room {
 
   private buildFinalResult(): GameResult {
     const ranked = [...this.players.values()]
-      .filter((p) => p.role === "player" && (!p.isRando || this.houseRules.randoCanScore))
+      .filter((p) => p.role === "player" && (!p.isWildCard || this.houseRules.wildCardCanScore))
       .sort((a, b) => b.score - a.score);
     const topScore = ranked[0]?.score ?? 0;
     // Every player sharing the top score is a winner - a shared first place
@@ -2217,7 +2244,7 @@ export class Room {
     const viewer = this.players.get(viewerId);
     if (!viewer) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
 
-    const czarId = this.currentCzarId();
+    const judgeId = this.currentJudgeId();
     const players: PublicPlayer[] = [...this.players.values()].map((p) => ({
       id: p.id,
       name: p.name,
@@ -2226,9 +2253,9 @@ export class Room {
       isHost: p.isHost,
       score: p.score,
       wonBlackCardCount: p.wonBlackCards.length,
-      isCzar: p.id === czarId,
+      isJudge: p.id === judgeId,
       hasSubmitted: this.hasNormalSubmission(p.id),
-      isRando: p.isRando,
+      isWildCard: p.isWildCard,
       personalCardsCount: p.personalCards.length,
     }));
 
@@ -2252,6 +2279,7 @@ export class Room {
       spotlightScale: this.spotlightScale,
       scoreboardScale: this.scoreboardScale,
       tableStyle: this.tableStyle,
+      roleNames: this.roleNames,
       packs: [...this.cardData.packs, ...getCustomSets().map(customSetToPackSummary)],
       selectedPackIds: this.selectedPackIds,
       excludedCardIds: [...this.excludedCardIds],
@@ -2266,7 +2294,7 @@ export class Room {
       you: {
         id: viewer.id,
         role: viewer.role,
-        isCzar: viewer.id === czarId,
+        isJudge: viewer.id === judgeId,
         isHost: viewer.isHost,
       },
     };
@@ -2298,12 +2326,12 @@ export class Room {
     }
 
     if (this.phase === "reveal" || this.phase === "judging") {
-      // Everyone gets the board now, not just the Czar/Table - unrevealed
+      // Everyone gets the board now, not just the Judge/Table - unrevealed
       // slots already come through with cards:null regardless of viewer,
       // so this only ever exposes what's already been flipped face-up for
       // everyone to see (a read-only "Table tab" on any player's phone).
       // Driving the board (reveal/shuffle/pick/spotlight) is still
-      // restricted to Czar-or-Table via requireJudgeAuthority - broadening
+      // restricted to Judge-or-Table via requireJudgeAuthority - broadening
       // what's sent doesn't broaden who can act on it.
       const board: JudgingCardSlot[] = this.judgingOrder.map((id) => {
         const revealed = this.revealedIds.has(id);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { BlackCard, JudgingCardSlot, PublicPlayer, RoomStateForClient, RoundResult, TableStyle, WhiteCard } from "@tabletop-judge/shared";
 import {
+  DEFAULT_ROLE_NAMES,
   DEFAULT_ACTION_CARD_DENSITY,
   DEFAULT_DECK_OPTIONS,
   DEFAULT_DOUBLE_DOWN_WINDOW_SECONDS,
@@ -116,7 +117,7 @@ export default function TablePreviewStage({
   const [order, setOrder] = useState<string[]>(() => deck.map((d) => d.submissionId));
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   // Mirrors Room.spotlightId server-side: whoever "reveals" opens it for
-  // everyone, since there's no separate Table/Czar client in a preview.
+  // everyone, since there's no separate Table/Judge client in a preview.
   const [spotlightId, setSpotlightId] = useState<string | null>(null);
   const [longPrompt, setLongPrompt] = useState(false);
   const [round, setRound] = useState(4);
@@ -187,7 +188,7 @@ export default function TablePreviewStage({
       isHost: false,
       score: (i * 2) % 5,
       wonBlackCardCount: 0,
-      isCzar: i === 0,
+      isJudge: i === 0,
       hasSubmitted: true,
     })
   );
@@ -219,6 +220,7 @@ export default function TablePreviewStage({
     spotlightScale,
     scoreboardScale,
     tableStyle,
+    roleNames: DEFAULT_ROLE_NAMES,
     packs: [],
     selectedPackIds: [],
     excludedCardIds: [],
@@ -234,13 +236,13 @@ export default function TablePreviewStage({
     judgingBoard,
     shuffleLocked,
     spotlightSubmissionId: spotlightId,
-    // A real Table's own `you` record is never isCzar/isHost - those are
+    // A real Table's own `you` record is never isJudge/isHost - those are
     // real-player flags, and the Table's judge authority comes from its
-    // role alone (see JudgingBoard's canJudge). isCzar: true here was a
+    // role alone (see JudgingBoard's canJudge). isJudge: true here was a
     // preview-only fabrication that leaked "Skip my turn" (gated on
-    // isHost || isCzar) into the preview even though it can never actually
+    // isHost || isJudge) into the preview even though it can never actually
     // show on a real Shared Screen.
-    you: { id: "preview", role: "table", isCzar: false, isHost: false },
+    you: { id: "preview", role: "table", isJudge: false, isHost: false },
   };
 
   const accent = TABLE_THEME_ACCENTS[tableStyle.theme][tableStyle.accentIndex]?.color;

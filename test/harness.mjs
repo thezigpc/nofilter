@@ -65,6 +65,7 @@ export async function startServer({ port = DEFAULT_PORT, env = {} } = {}) {
       ADMIN_PASSWORD_HASH_PATH: path.join(dataDir, "admin-password.json"),
       CORE_SET_PATH: path.join(dataDir, "core-set.json"),
       GAME_NAME_PATH: path.join(dataDir, "game-name.json"),
+      ROLE_NAMES_PATH: path.join(dataDir, "role-names.json"),
       DEFAULT_THEME_PATH: path.join(dataDir, "default-theme.json"),
       ...env,
     },
@@ -193,13 +194,13 @@ export async function makeRoom(baseUrl, names = ["Alice", "Bob", "Carol"]) {
 export function waitForDeal(room, timeout = 8000) {
   // Deliberately "a non-empty hand plus a black card", not "exactly
   // handSize": Action Cards legitimately push a hand above the cap (Triple
-  // Boost adds 3) or below it (playing one costs a card, and a Czar never
+  // Boost adds 3) or below it (playing one costs a card, and a Judge never
   // submits so never triggers an Auto Draw top-up mid-round). Requiring an
   // exact size made this hang on perfectly valid states. Specs that care
   // about an exact hand size should assert it themselves.
   return waitFor(
     () =>
-      room.clients.every((c) => c.me?.isRando || (c.state?.yourHand ?? []).length > 0) &&
+      room.clients.every((c) => c.me?.isWildCard || (c.state?.yourHand ?? []).length > 0) &&
       !!room.host.state?.blackCard,
     { timeout, label: "every player to receive their cards" }
   );
@@ -215,7 +216,7 @@ export function waitForDeal(room, timeout = 8000) {
  */
 export function findActionCard(room, defId, { excludePlayerId } = {}) {
   for (const c of room.clients) {
-    if (c.me?.isRando) continue;
+    if (c.me?.isWildCard) continue;
     if (excludePlayerId && c.state?.you?.id === excludePlayerId) continue;
     const card = (c.state?.yourHand ?? []).find((x) => x.actionCardId === defId);
     if (card) return { owner: c, cardId: card.id };
@@ -240,7 +241,7 @@ export async function ensureActionCard(room, defId, opts = {}) {
   // player per game, so it can't be the only fallback.
   const before = room.clients.map((c) => (c.state?.yourHand ?? []).map((x) => x.id).join(","));
   for (const c of room.clients) {
-    if (c.me?.isRando) continue;
+    if (c.me?.isWildCard) continue;
     c.emit("refreshHand");
   }
   await waitFor(
@@ -275,10 +276,10 @@ export async function selectOfficialPacks(host) {
 }
 
 /**
- * Plays one full round: everyone required submits, the Czar reveals all
+ * Plays one full round: everyone required submits, the Judge reveals all
  * and picks the first revealed card. Resolves once the round is decided.
  *
- * Returns `{ czar, board }` where `board` is a snapshot of the fully
+ * Returns `{ judge, board }` where `board` is a snapshot of the fully
  * revealed judging board taken *before* the pick - the live board is wiped
  * by the next deal, so anything inspecting the round's cards has to read
  * this snapshot rather than client state after the fact.
@@ -290,29 +291,29 @@ export async function playRound(room) {
   const pick = room.host.state.blackCard?.pick ?? 1;
 
   for (const c of room.clients) {
-    if (!c.me || c.me.isCzar) continue;
+    if (!c.me || c.me.isJudge) continue;
     if (c.state.yourSubmissionId) continue;
     const jokeCards = (c.state.yourHand ?? []).filter((card) => !card.actionCardId);
     const cardIds = jokeCards.slice(0, pick).map((card) => card.id);
     if (cardIds.length === pick) c.emit("submitCards", { cardIds });
   }
 
-  const czar = await waitFor(
-    () => room.clients.find((c) => c.me?.isCzar && (c.state.phase === "reveal" || c.state.phase === "judging")),
-    { label: "Czar to reach the judging board" }
+  const judge = await waitFor(
+    () => room.clients.find((c) => c.me?.isJudge && (c.state.phase === "reveal" || c.state.phase === "judging")),
+    { label: "Judge to reach the judging board" }
   );
 
-  for (const slot of czar.state.judgingBoard ?? []) {
-    czar.emit("revealSubmission", { submissionId: slot.submissionId });
+  for (const slot of judge.state.judgingBoard ?? []) {
+    judge.emit("revealSubmission", { submissionId: slot.submissionId });
     await wait(60);
   }
-  const revealed = await waitFor(() => czar.state.judgingBoard?.find((s) => s.revealed), { label: "a revealed card" });
+  const revealed = await waitFor(() => judge.state.judgingBoard?.find((s) => s.revealed), { label: "a revealed card" });
   // Snapshot before picking - dealPhase() clears judgingOrder, so reading
   // the board off client state after the round resolves finds nothing.
-  const board = JSON.parse(JSON.stringify(czar.state.judgingBoard ?? []));
-  czar.emit("czarPick", { submissionId: revealed.submissionId });
+  const board = JSON.parse(JSON.stringify(judge.state.judgingBoard ?? []));
+  judge.emit("judgePick", { submissionId: revealed.submissionId });
   await waitFor(() => ["roundEnd", "gameEnd"].includes(room.host.state.phase), { label: "round to resolve" });
-  return { czar, board };
+  return { judge, board };
 }
 
 // ---------- assertions ----------

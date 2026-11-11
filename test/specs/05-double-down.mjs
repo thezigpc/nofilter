@@ -56,7 +56,7 @@ export default async function ({ baseUrl }) {
       await waitForDeal(room);
       const pick = room.host.state.blackCard?.pick ?? 1;
       for (const c of room.clients) {
-        if (!c.me || c.me.isCzar || c.state.yourSubmissionId) continue;
+        if (!c.me || c.me.isJudge || c.state.yourSubmissionId) continue;
         const jokes = (c.state.yourHand ?? []).filter((card) => !card.actionCardId);
         const ids = jokes.slice(0, pick).map((card) => card.id);
         if (ids.length === pick) c.emit("submitCards", { cardIds: ids });
@@ -73,20 +73,20 @@ export default async function ({ baseUrl }) {
       // elapse and the round advance to reveal before playing it out. This
       // wait has to outlast the window itself, or the loop would spin in a
       // submission phase the server is deliberately still holding.
-      const czar = await waitFor(
+      const judge = await waitFor(
         () =>
           room.clients.find(
-            (c) => c.me?.isCzar && (c.state.phase === "reveal" || c.state.phase === "judging")
+            (c) => c.me?.isJudge && (c.state.phase === "reveal" || c.state.phase === "judging")
           ),
         { timeout: 8000, label: "the round to advance past the Double Down window" }
       ).catch(() => null);
-      if (czar) {
-        for (const slot of czar.state.judgingBoard ?? []) {
-          czar.emit("revealSubmission", { submissionId: slot.submissionId });
+      if (judge) {
+        for (const slot of judge.state.judgingBoard ?? []) {
+          judge.emit("revealSubmission", { submissionId: slot.submissionId });
           await wait(50);
         }
-        const revealed = czar.state.judgingBoard?.find((s) => s.revealed);
-        if (revealed) czar.emit("czarPick", { submissionId: revealed.submissionId });
+        const revealed = judge.state.judgingBoard?.find((s) => s.revealed);
+        if (revealed) judge.emit("judgePick", { submissionId: revealed.submissionId });
         await waitFor(() => room.host.state.phase === "submission", { timeout: 6000, label: "next round" }).catch(
           () => {}
         );

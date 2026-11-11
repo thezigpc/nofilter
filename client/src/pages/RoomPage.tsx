@@ -13,7 +13,7 @@ import PlayerHandView from "../components/PlayerHandView.js";
 import PersonalCardsView from "../components/PersonalCardsView.js";
 import PlayerJudgingView from "../components/PlayerJudgingView.js";
 import BufferedNumberInput from "../components/BufferedNumberInput.js";
-import CzarBlackCardControls from "../components/CzarBlackCardControls.js";
+import JudgeBlackCardControls from "../components/JudgeBlackCardControls.js";
 import JudgingBoard from "../components/JudgingBoard.js";
 import TableDenseLayout from "../components/TableDenseLayout.js";
 import TableCommandStripLayout from "../components/TableCommandStripLayout.js";
@@ -428,11 +428,11 @@ export default function RoomPage() {
     );
   }
 
-  // The host keeps this always (including in Lobby, before any Czar
+  // The host keeps this always (including in Lobby, before any Judge
   // rotation exists, since that's exactly when you're sizing up the Table
-  // before starting) - the current Czar also gets it during a round, since
+  // before starting) - the current Judge also gets it during a round, since
   // they're the one actively driving the shared judging display.
-  const canControlTableScale = isTable || state.you.isHost || state.you.isCzar;
+  const canControlTableScale = isTable || state.you.isHost || state.you.isJudge;
   const canInviteMidGame = (state.you.isHost || isTable) && state.phase !== "lobby";
 
   function adjustTableScale(delta: number) {
@@ -441,7 +441,7 @@ export default function RoomPage() {
 
   function leaveGame() {
     if (!state) return;
-    const realPlayerCount = state.players.filter((p) => p.role === "player" && !p.isRando).length;
+    const realPlayerCount = state.players.filter((p) => p.role === "player" && !p.isWildCard).length;
     const wouldEndGame = realPlayerCount - 1 < minPlayersToContinue(state.houseRules);
     const warning = wouldEndGame
       ? "Leaving now drops below the minimum to keep playing, so the game will end immediately on current standings. Leave anyway?"
@@ -495,7 +495,7 @@ export default function RoomPage() {
           <span className="phase-badge">{state.phase}</span>
           {state.phase !== "lobby" && state.phase !== "gameEnd" && state.phase !== "personalCards" && (
             <span className="tag" title="Whoever's turn it is to judge this round">
-              <CrownIcon className="icon" /> Czar: {state.players.find((p) => p.isCzar)?.name ?? "—"}
+              <CrownIcon className="icon" /> {state.roleNames.judge}: {state.players.find((p) => p.isJudge)?.name ?? "—"}
             </span>
           )}
           <button
@@ -614,14 +614,14 @@ export default function RoomPage() {
 }
 
 function RoomBody({ state }: { state: RoomStateForClient }) {
-  // Crowd Favorite / Democracy: "No Card Czar in this mode" (see Room.ts)
-  // - whoever the czar rotation still happens to point at is just another
+  // Crowd Favorite / Democracy: "No Judge in this mode" (see Room.ts)
+  // - whoever the judge rotation still happens to point at is just another
   // voter, not a judge, so they get the same read-only board + Vote button
   // everyone else does (PlayerJudgingView below). Only the Table (the
   // room's neutral shared screen) keeps driver controls, for spotlighting
   // already-revealed cards - nothing is gated behind it since every card
   // is auto-revealed for a vote (see Room.moveToReveal).
-  const canJudge = state.you.role === "table" || (state.you.isCzar && !state.votingThisRound);
+  const canJudge = state.you.role === "table" || (state.you.isJudge && !state.votingThisRound);
 
   switch (state.phase) {
     case "lobby":
@@ -638,12 +638,12 @@ function RoomBody({ state }: { state: RoomStateForClient }) {
       if (state.you.role === "table") {
         return <WaitingPanel state={state} message="Waiting for players to submit…" />;
       }
-      // Crowd Favorite: no exemption for whoever czarOrder currently points
+      // Crowd Favorite: no exemption for whoever judgeOrder currently points
       // at - they submit a card like everyone else, so they need the real
       // hand view, not the passive "sit tight" wait.
-      if (state.you.isCzar && !state.votingThisRound) {
+      if (state.you.isJudge && !state.votingThisRound) {
         return (
-          <WaitingPanel state={state} message="You're the Card Czar this round — sit tight while everyone submits." />
+          <WaitingPanel state={state} message={`You're the ${state.roleNames.judge} this round — sit tight while everyone submits.`} />
         );
       }
       return <PlayerHandView state={state} />;
@@ -683,7 +683,7 @@ function RoomBody({ state }: { state: RoomStateForClient }) {
   }
 }
 
-// Only ever rendered for the Czar/Table during Submission now (Reveal/
+// Only ever rendered for the Judge/Table during Submission now (Reveal/
 // Judging uses PlayerJudgingView instead) - dead time worth making a
 // feature of: the prompt fills the screen, big and centered, readable
 // from across a room while everyone else is heads-down on their phones.
@@ -692,7 +692,7 @@ function WaitingPanel({ state, message }: { state: RoomStateForClient; message: 
   // host's Players panel's job; this is just "is anything even happening."
   const { requiredPlayers, submittedCount } = getSubmissionProgress(state);
   // Same component/markup for the Table (a big shared screen, read from
-  // across a room - wants the large 2.2rem treatment) and the Czar's own
+  // across a room - wants the large 2.2rem treatment) and the Judge's own
   // phone (which doesn't - the large size was overflowing the card on a
   // narrow screen). A role class lets the CSS size each appropriately
   // instead of one font-size trying to serve both.
@@ -714,7 +714,7 @@ function WaitingPanel({ state, message }: { state: RoomStateForClient; message: 
           {submittedCount} of {requiredPlayers.length} submitted
         </p>
       )}
-      <CzarBlackCardControls state={state} />
+      <JudgeBlackCardControls state={state} />
     </div>
   );
 }
@@ -733,7 +733,7 @@ function PersonalCardsWaitingPanel({ state }: { state: RoomStateForClient }) {
   }, [endsAt]);
 
   const secondsLeft = endsAt ? Math.max(0, Math.ceil((endsAt - now) / 1000)) : null;
-  const writers = state.players.filter((p) => p.role === "player" && !p.isRando);
+  const writers = state.players.filter((p) => p.role === "player" && !p.isWildCard);
 
   return (
     <div className="waiting-hero">

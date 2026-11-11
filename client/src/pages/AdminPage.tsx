@@ -8,6 +8,7 @@ import { fetchPublicConfig } from "../publicConfig.js";
 import { themeAttrs } from "../useThemeAttrs.js";
 import { BackArrowIcon } from "../components/Icons.js";
 import GameNamePanel from "../components/GameNamePanel.js";
+import DefaultRoleNamesPanel from "../components/DefaultRoleNamesPanel.js";
 import DefaultThemePanel from "../components/DefaultThemePanel.js";
 
 function formatAge(ms: number): string {
@@ -269,6 +270,7 @@ export default function AdminPage() {
           <RoomManagementPanel />
           <DefaultThemePanel onChange={(t, i) => { setTheme(t); setAccentIndex(i); }} />
           <GameNamePanel />
+          <DefaultRoleNamesPanel />
         </>
       )}
     </div>

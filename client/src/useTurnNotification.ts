@@ -37,7 +37,7 @@ function playChime() {
 }
 
 /** Fires a short chime + vibration the instant it becomes this viewer's turn
- * to act (submit a card, or judge as Czar/Table) - easy to miss otherwise if
+ * to act (submit a card, or judge as Judge/Table) - easy to miss otherwise if
  * the phone isn't being actively watched between rounds. */
 export function useTurnNotification(state: RoomStateForClient | null, enabled: boolean) {
   const you = state?.players.find((p) => p.id === state.you.id);
@@ -46,9 +46,9 @@ export function useTurnNotification(state: RoomStateForClient | null, enabled: b
     : (state.phase === "personalCards" && state.you.role === "player") ||
       (state.phase === "submission" &&
         state.you.role === "player" &&
-        (!state.you.isCzar || state.votingThisRound) &&
+        (!state.you.isJudge || state.votingThisRound) &&
         !you?.hasSubmitted) ||
-      ((state.phase === "reveal" || state.phase === "judging") && (state.you.role === "table" || state.you.isCzar));
+      ((state.phase === "reveal" || state.phase === "judging") && (state.you.role === "table" || state.you.isJudge));
 
   // null (not false) means "haven't observed a state yet" - skip firing on
   // the very first render so loading straight into "it's your turn" (e.g.

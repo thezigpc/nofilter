@@ -3,6 +3,7 @@ import type { ClientToServerEvents, Role, ServerToClientEvents } from "@tabletop
 import { generateRoomCode, normalizeRoomCode, THEMES_REQUIRING_SPOTLIGHT } from "@tabletop-judge/shared";
 import type { LoadedCardData } from "../cards/loader.js";
 import type { DefaultTheme } from "../tableStyle/store.js";
+import { getDefaultRoleNames } from "../roleNames/store.js";
 import { ROOM_INACTIVITY_TTL_MS, ROOM_SWEEP_INTERVAL_MS } from "../config.js";
 import { Room } from "./Room.js";
 import { RoomError } from "./errors.js";
@@ -57,6 +58,9 @@ export class RoomManager {
     } while (this.rooms.has(code));
 
     const room = new Room(code, this.io, this.cardData);
+    // Forward-looking, like the theme below: a room already in progress
+    // keeps whatever names it started with.
+    room.roleNames = { ...getDefaultRoleNames() };
     room.tableStyle = {
       ...room.tableStyle,
       theme: this.defaultTheme.theme,

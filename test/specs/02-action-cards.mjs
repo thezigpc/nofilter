@@ -18,7 +18,7 @@ export default async function ({ baseUrl }) {
   try {
     await selectOfficialPacks(room.host);
     room.host.emit("updateHouseRules", {
-      houseRules: { actionCards: true, randoCardrissian: true, singleAnswerOnly: true, handRefresh: true },
+      houseRules: { actionCards: true, wildCard: true, singleAnswerOnly: true, handRefresh: true },
     });
     room.host.emit("setActionCardDensity", { value: 15 });
     room.host.emit("updateHandSize", { value: 20 });
@@ -34,8 +34,8 @@ export default async function ({ baseUrl }) {
     await waitForDeal(room);
 
     assert(
-      room.host.state.players.some((p) => p.isRando),
-      "Rando should be in the room when the rule is on"
+      room.host.state.players.some((p) => p.isWildCard),
+      "Wild Card should be in the room when the rule is on"
     );
 
     // ---- Triple Boost: -1 played, +3 drawn = net +2.
@@ -79,7 +79,7 @@ export default async function ({ baseUrl }) {
 
     // ---- Flavor card: sets a judging-time instruction.
     {
-      const { owner, cardId } = await ensureActionCard(room, "czar_accent");
+      const { owner, cardId } = await ensureActionCard(room, "judge_accent");
       owner.emit("playActionCard", { cardId });
       await waitFor(() => !!room.host.state.pendingJudgingMessage, { label: "a pending judging message to be set" });
     }

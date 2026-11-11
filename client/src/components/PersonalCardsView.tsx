@@ -27,7 +27,7 @@ export default function PersonalCardsView({ state }: { state: RoomStateForClient
   // has written their allowance (Room.maybeShortenPersonalCardsWindow), so
   // say why the countdown suddenly dropped rather than letting it look like
   // a glitch.
-  const writers = state.players.filter((p) => p.role === "player" && !p.isRando && p.connected);
+  const writers = state.players.filter((p) => p.role === "player" && !p.isWildCard && p.connected);
   const everyoneDone = writers.length > 0 && writers.every((p) => (p.personalCardsCount ?? 0) >= maxCount);
 
   function addCard() {

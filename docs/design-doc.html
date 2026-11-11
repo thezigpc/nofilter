@@ -272,18 +272,18 @@
     </div>
     <div class="card card-black">
       <div class="card-label">Role · Rotates</div>
-      <div class="card-title">Card Czar</div>
-      <div class="card-sub">Not a separate client — whichever player's turn it is gets Czar-only UI on their own phone: reveal submissions, pick the winner.</div>
+      <div class="card-title">Judge</div>
+      <div class="card-sub">Not a separate client — whichever player's turn it is gets Judge-only UI on their own phone: reveal submissions, pick the winner.</div>
     </div>
     <div class="card card-white">
       <div class="card-label">Role · Optional</div>
       <div class="card-title">Table</div>
-      <div class="card-sub">Tablet, laptop, or TV. No hand of its own — shows the black card large, shows submissions face-down, mirrors whoever is currently Czar.</div>
+      <div class="card-sub">Tablet, laptop, or TV. No hand of its own — shows the black card large, shows submissions face-down, mirrors whoever is currently Judge.</div>
     </div>
   </div>
 
   <h3>The Table doesn't belong to a player</h3>
-  <p>Rather than manually "passing" the tablet, the Table client auto-follows the active Czar each round — the server just tells it whose reveal/pick view to mirror. That matches how the physical game works: the deck sits in the middle, and whoever's turn it is reads from it. If the current Czar would rather use the shared screen than fumble their own phone, the same reveal/pick controls work from either surface — the Table is a mirror, not a separate source of truth.</p>
+  <p>Rather than manually "passing" the tablet, the Table client auto-follows the active Judge each round — the server just tells it whose reveal/pick view to mirror. That matches how the physical game works: the deck sits in the middle, and whoever's turn it is reads from it. If the current Judge would rather use the shared screen than fumble their own phone, the same reveal/pick controls work from either surface — the Table is a mirror, not a separate source of truth.</p>
 
   <hr class="divider">
 
@@ -362,8 +362,8 @@
   <ul>
     <li><strong>Dealing:</strong> server tops every hand up to its target size from the room's shuffled white deck; reshuffles the discard pile back in if the deck runs dry.</li>
     <li><strong>Submission:</strong> for a pick-2/pick-3 black card, the player arranges their chosen cards in order client-side and submits an ordered array — the server enforces the count and preserves that order through to Reveal, since sequence changes the joke.</li>
-    <li><strong>Reveal:</strong> submissions are shown anonymized and shuffled, never in submission order, so the Czar can't infer who played what from timing.</li>
-    <li><strong>Judging:</strong> only the Czar's client (phone or Table, whichever they're using) can send the pick; the server rejects a pick from anyone else.</li>
+    <li><strong>Reveal:</strong> submissions are shown anonymized and shuffled, never in submission order, so the Judge can't infer who played what from timing.</li>
+    <li><strong>Judging:</strong> only the Judge's client (phone or Table, whichever they're using) can send the pick; the server rejects a pick from anyone else.</li>
   </ul>
 
   <hr class="divider">
@@ -374,7 +374,7 @@
   <div class="cardrow two">
     <div class="card card-black">
       <div class="card-label">House rule</div>
-      <div class="card-title">Rando Cardrissian</div>
+      <div class="card-title">Wild Card</div>
       <div class="card-sub">Each round, the server auto-submits one random white card from a virtual player who never wins or scores — pure chaos filler in the lineup. Hooks into Dealing (draws a card) and Submission (auto-fills it) only.</div>
     </div>
     <div class="card card-black">
@@ -389,7 +389,7 @@
     <li>A player submits a white card as normal for the round.</li>
     <li>They're dealt a replacement immediately (not held back until Round End, so the new card is in hand while the round is still live).</li>
     <li>If they'd rather play that replacement instead, and they hold at least one black card won from a <em>previous</em> round, they can wager it — that spends one won black card as the stake.</li>
-    <li>Wagering adds the replacement to the lineup as a <strong>second</strong> entry from the same player, alongside their original — not a swap. The Czar sees two anonymized cards from that player without knowing they're linked.</li>
+    <li>Wagering adds the replacement to the lineup as a <strong>second</strong> entry from the same player, alongside their original — not a swap. The Judge sees two anonymized cards from that player without knowing they're linked.</li>
     <li><strong>If either of the two wins:</strong> the player keeps that round's black card <em>and</em> gets the wagered one back — a double-down pays for itself. <strong>If neither wins:</strong> the wagered black card is lost back to the box, on top of not winning the round.</li>
   </ol>
 

@@ -1,13 +1,13 @@
 import { makeRoom, selectOfficialPacks, playRound, waitFor, assert } from "../harness.mjs";
 
-export const name = "Rando never submits an Action Card, even at high density";
+export const name = "Wild Card never submits an Action Card, even at high density";
 
 /**
- * Rando's hand is private server state, so this asserts the observable
- * consequence instead: Rando auto-submits every round, and the real players
+ * Wild Card's hand is private server state, so this asserts the observable
+ * consequence instead: Wild Card auto-submits every round, and the real players
  * here deliberately never submit an Action Card. So if one ever turns up on
- * a revealed judging board, it can only have come from Rando - which is
- * exactly the bug `Room.drawNonActionCardForRando()` exists to prevent.
+ * a revealed judging board, it can only have come from Wild Card - which is
+ * exactly the bug `Room.drawNonActionCardForWildCard()` exists to prevent.
  *
  * Density is pushed to the maximum so an unfixed version would fail fast:
  * at 15% roughly one card in seven is an Action Card.
@@ -17,7 +17,7 @@ export default async function ({ baseUrl }) {
   try {
     await selectOfficialPacks(room.host);
     room.host.emit("updateHouseRules", {
-      houseRules: { actionCards: true, randoCardrissian: true, singleAnswerOnly: true },
+      houseRules: { actionCards: true, wildCard: true, singleAnswerOnly: true },
     });
     room.host.emit("setActionCardDensity", { value: 15 });
     room.host.emit("updateWinCondition", { target: 500 });
@@ -35,7 +35,7 @@ export default async function ({ baseUrl }) {
         for (const card of slot.cards ?? []) {
           assert(
             !card.actionCardId,
-            `an Action Card ("${card.text}") reached the judging board in round ${round + 1} - Rando drew one`
+            `an Action Card ("${card.text}") reached the judging board in round ${round + 1} - Wild Card drew one`
           );
         }
       }

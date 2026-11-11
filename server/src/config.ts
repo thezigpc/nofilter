@@ -94,7 +94,7 @@ export const MOCKUPS_DIR_PATH = process.env.MOCKUPS_DIR_PATH
 export const HAND_SIZE = Number(process.env.HAND_SIZE ?? 10);
 
 // Presentational pacing for the RoundEnd -> next round transition. Reveal ->
-// Judging is Czar-driven now (shuffle/flip), not timer-driven.
+// Judging is Judge-driven now (shuffle/flip), not timer-driven.
 export const ROUND_END_DELAY_MS = Number(process.env.ROUND_END_DELAY_MS ?? 7000);
 
 // A room with no activity at all for this long gets closed outright,
@@ -158,3 +158,10 @@ export const GAME_NAME_PATH = process.env.GAME_NAME_PATH
 export const ADMIN_PASSWORD_HASH_PATH = process.env.ADMIN_PASSWORD_HASH_PATH
   ? path.resolve(process.env.ADMIN_PASSWORD_HASH_PATH)
   : path.join(projectRoot, "admin-password.json");
+
+// Where the admin-chosen default names for the Judge and the Wild Card bot
+// are persisted (see server/src/roleNames/store.ts). Runtime data, same
+// pattern as GAME_NAME_PATH above.
+export const ROLE_NAMES_PATH = process.env.ROLE_NAMES_PATH
+  ? path.resolve(process.env.ROLE_NAMES_PATH)
+  : path.join(projectRoot, "role-names.json");

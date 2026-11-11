@@ -2,6 +2,7 @@ import type { DeckOptions, HouseRules, WinCondition } from "./protocol.js";
 import { DEFAULT_DECK_OPTIONS, DEFAULT_HAND_SIZE, DEFAULT_HOUSE_RULES, DEFAULT_WIN_CONDITION } from "./protocol.js";
 import type { ActionCardTier } from "./actionCards.js";
 import { DEFAULT_ACTION_CARD_DENSITY } from "./actionCards.js";
+import { hasLegacyKeys, migrateLegacyActionCardTiers, migrateLegacyHouseRules } from "./roleNames.js";
 
 /**
  * A whole game configuration in one tap.
@@ -58,10 +59,10 @@ export const BUILT_IN_GAME_SETUPS: BuiltInGameSetup[] = [
   {
     id: "chaos",
     name: "Chaos",
-    description: "Action Cards, Rando, Double Down and Trade-In all in play.",
+    description: "Action Cards, {wildCard}, Double Down and Trade-In all in play.",
     houseRules: {
       ...DEFAULT_HOUSE_RULES,
-      randoCardrissian: true,
+      wildCard: true,
       doubleDown: true,
       tradeIn: true,
       actionCards: true,
@@ -73,7 +74,7 @@ export const BUILT_IN_GAME_SETUPS: BuiltInGameSetup[] = [
   {
     id: "everyone-writes",
     name: "Everyone writes",
-    description: "Write your own cards first, then vote instead of having a Czar.",
+    description: "Write your own cards first, then vote instead of having a {judge}.",
     houseRules: {
       ...DEFAULT_HOUSE_RULES,
       personalCards: true,
@@ -86,4 +87,16 @@ export const BUILT_IN_GAME_SETUPS: BuiltInGameSetup[] = [
 
 export function getBuiltInGameSetup(id: string): BuiltInGameSetup | undefined {
   return BUILT_IN_GAME_SETUPS.find((s) => s.id === id);
+}
+
+/** Maps a setup saved before the Nov 2026 rename (Czar -> Judge, Rando ->
+ * Wild Card) onto today's keys. Safe to run on anything - a current setup
+ * comes back unchanged. */
+export function migrateLegacyGameSetup<T extends GameSetup>(setup: T): T {
+  if (!hasLegacyKeys(setup)) return setup;
+  return {
+    ...setup,
+    houseRules: migrateLegacyHouseRules(setup.houseRules ?? {}),
+    ...(setup.actionCardTiers ? { actionCardTiers: migrateLegacyActionCardTiers(setup.actionCardTiers) } : {}),
+  };
 }

@@ -1,7 +1,7 @@
 // Player-facing release notes, shown at the bottom of the home page.
 //
 // Deliberately hand-written rather than generated from git: commit messages
-// are written for whoever maintains this, and say things like "fix Czar
+// are written for whoever maintains this, and say things like "fix Judge
 // rotation off-by-one" - which means nothing to someone about to play a
 // card game. Every line here answers "what changed for me?" instead.
 //
@@ -33,11 +33,20 @@ export const CHANGE_KIND_LABELS: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-11-11",
+    items: [
+      {
+        kind: "new",
+        text: "Call the roles whatever you like: the host can rename the Judge and the Wild Card bot for their room under House Rules → Names, and every screen, button and message follows along.",
+      },
+    ],
+  },
+  {
     date: "2026-09-07",
     items: [
       {
         kind: "fixed",
-        text: "Rando's score now shows on the Scoreboard and climbs when it wins a round, even with Rando Can Win off — it just never ends the game on its own, so it can visibly sail past the win target with no effect on anyone else's game.",
+        text: "Wild Card's score now shows on the Scoreboard and climbs when it wins a round, even with Wild Card Can Win off — it just never ends the game on its own, so it can visibly sail past the win target with no effect on anyone else's game.",
       },
     ],
   },
@@ -46,7 +55,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     items: [
       {
         kind: "fixed",
-        text: "Crowd Favorite and Democracy: the whole lineup now reveals for everyone the moment voting starts, instead of waiting on whoever the Card Czar rotation still happened to point at to flip each card first. Voting also no longer gets hidden by the room's Spotlight setting.",
+        text: "Crowd Favorite and Democracy: the whole lineup now reveals for everyone the moment voting starts, instead of waiting on whoever the Judge rotation still happened to point at to flip each card first. Voting also no longer gets hidden by the room's Spotlight setting.",
       },
     ],
   },
@@ -85,7 +94,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     items: [
       {
         kind: "new",
-        text: "Two players can now play a full game with Rando Cardrissian on — Rando covers the third seat, both for starting a game and for staying in one if a player leaves mid-game. Crowd Favorite and the Democracy Action Card still need a real crowd (3+ players), and just don't come up as options until there's one.",
+        text: "Two players can now play a full game with Wild Card on — Wild Card covers the third seat, both for starting a game and for staying in one if a player leaves mid-game. Crowd Favorite and the Democracy Action Card still need a real crowd (3+ players), and just don't come up as options until there's one.",
       },
       {
         kind: "improved",
@@ -93,7 +102,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       },
       {
         kind: "fixed",
-        text: "The Card Czar's own \"sit tight\" screen could run long black-card text past the edge of the card on a phone — same fix as the hand view, applied here too.",
+        text: "The Judge's own \"sit tight\" screen could run long black-card text past the edge of the card on a phone — same fix as the hand view, applied here too.",
       },
       {
         kind: "improved",
@@ -187,7 +196,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       },
       {
         kind: "new",
-        text: "New sub-option under Rando Cardrissian: \"Rando can win\" makes it a real competitor that scores like anyone else, instead of its wins always being a freebie for the table.",
+        text: "New sub-option under Wild Card: \"Wild Card can win\" makes it a real competitor that scores like anyone else, instead of its wins always being a freebie for the table.",
       },
       {
         kind: "fixed",
@@ -232,7 +241,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "new", text: "If the host drops out and doesn't come back, anyone still in the room can take over as host after a couple of minutes — a dead phone no longer strands the game." },
       { kind: "new", text: "Hosts can hand the host role to someone else mid-game, not just in the lobby." },
       { kind: "new", text: "Take back a submission if you misread the black card — right up until the last player submits." },
-      { kind: "new", text: "Three new Action Cards: Tax (take a won black card from someone), Reverse (pick the worst card this round) and Democracy (the whole table votes instead of the Czar)." },
+      { kind: "new", text: "Three new Action Cards: Tax (take a won black card from someone), Reverse (pick the worst card this round) and Democracy (the whole table votes instead of the Judge)." },
       { kind: "new", text: "Choose exactly which Action Cards are in play, and how often each one turns up — Off, Rare, Normal or Common." },
       { kind: "new", text: "New win condition: play a fixed number of rounds instead of racing to a score." },
       { kind: "improved", text: "The shared screen now lists the house rules and settings in play, right next to the join QR code." },
@@ -254,12 +263,12 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "new", text: "Custom Sets and saved pack selections — build your own packs, browse what's in them, and reuse a selection in any room." },
       { kind: "new", text: "Two more house rules: Single Answer Cards Only and Pick Bonus." },
       { kind: "new", text: "Round history, plus a chime and vibration when it's your turn." },
-      { kind: "new", text: "Hosts can skip a slow player's turn, skip their own turn as Czar, kick someone mid-game, or close the room outright." },
+      { kind: "new", text: "Hosts can skip a slow player's turn, skip their own turn as Judge, kick someone mid-game, or close the room outright." },
       { kind: "new", text: "Leave a game whenever you like — and if you're removed, you're now told why instead of just landing back on the home screen." },
       { kind: "new", text: "Two shared-screen layouts (Dense Grid and Command Strip), and phones now pick up the room's colours too." },
-      { kind: "fixed", text: "Rando Cardrissian no longer takes a turn as Card Czar." },
+      { kind: "fixed", text: "Wild Card no longer takes a turn as Judge." },
       { kind: "fixed", text: "Auto Draw no longer skips the very first hand of the game." },
-      { kind: "fixed", text: "The Card Czar rotation no longer skips a player after someone leaves." },
+      { kind: "fixed", text: "The Judge rotation no longer skips a player after someone leaves." },
       { kind: "fixed", text: "Two tabs in the same browser no longer knock each other out of their seats." },
       { kind: "fixed", text: "The header no longer forces the whole page sideways on a narrow phone." },
       { kind: "fixed", text: "Rooms nobody is using close themselves after an hour." },
@@ -269,7 +278,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-08-15",
     items: [
       { kind: "new", text: "First playable version: create a room, everyone joins from their phone, and an optional shared screen shows the black card and submissions." },
-      { kind: "new", text: "House rules: Rando Cardrissian, Double Down, Trade-In, Hand Refresh, No Scorekeeping, Custom Prompts and Crowd Favorite." },
+      { kind: "new", text: "House rules: Wild Card, Double Down, Trade-In, Hand Refresh, No Scorekeeping, Custom Prompts and Crowd Favorite." },
       { kind: "new", text: "Shared-screen styling with saved presets, a spotlight on revealed cards, and adjustable sizing for reading across a room." },
       { kind: "new", text: "Face-down judging, a QR code for joining, adjustable hand size and win target, and your own custom cards." },
       { kind: "new", text: "Play Again at the end of a game, and joining mid-game with a catch-up so you aren't hopelessly behind." },

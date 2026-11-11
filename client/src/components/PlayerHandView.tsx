@@ -3,7 +3,7 @@ import type { ActionCardDef, RoomStateForClient, WhiteCard } from "@tabletop-jud
 import { getActionCardDef } from "@tabletop-judge/shared";
 import { socket } from "../socket.js";
 import DoubleDownOffer from "./DoubleDownOffer.js";
-import CzarBlackCardControls from "./CzarBlackCardControls.js";
+import JudgeBlackCardControls from "./JudgeBlackCardControls.js";
 import ActionCardPlayPanel from "./ActionCardPlayPanel.js";
 import { blackCardLengthScale, formatBlackCardText } from "../blackCardText.js";
 import { tapHaptic } from "../haptics.js";
@@ -26,7 +26,7 @@ export default function PlayerHandView({ state }: { state: RoomStateForClient })
   const canTradeIn = state.houseRules.tradeIn && !hasSubmitted && (you?.wonBlackCardCount ?? 0) > 0;
   const canRefreshHand = state.houseRules.handRefresh && !hasSubmitted && !state.youUsedHandRefresh;
   const requiredPlayers = state.players.filter(
-    (p) => p.role === "player" && !p.isRando && (state.votingThisRound || !p.isCzar)
+    (p) => p.role === "player" && !p.isWildCard && (state.votingThisRound || !p.isJudge)
   );
   const submittedCount = requiredPlayers.filter((p) => p.hasSubmitted).length;
   // Mirrors the server rule: a take-back is only possible while someone
@@ -124,7 +124,7 @@ export default function PlayerHandView({ state }: { state: RoomStateForClient })
         {blackCard.pick > 1 && <p className="pick-hint">Pick {blackCard.pick}, in order</p>}
       </div>
 
-      <CzarBlackCardControls state={state} />
+      <JudgeBlackCardControls state={state} />
 
       {hasSubmitted ? (
         <div className="panel center-text">

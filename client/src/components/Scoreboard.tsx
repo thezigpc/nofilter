@@ -34,8 +34,8 @@ export default function Scoreboard({ state }: { state: RoomStateForClient }) {
   return (
     <footer className="scoreboard" ref={ref}>
       {players.map((p) => (
-        <span key={p.id} className={`score-chip${p.isCzar ? " czar" : ""}${!p.connected ? " muted" : ""}`}>
-          {p.isCzar && <CrownIcon className="icon" />} {p.name}: {p.score}
+        <span key={p.id} className={`score-chip${p.isJudge ? " judge" : ""}${!p.connected ? " muted" : ""}`}>
+          {p.isJudge && <CrownIcon className="icon" />} {p.name}: {p.score}
         </span>
       ))}
     </footer>

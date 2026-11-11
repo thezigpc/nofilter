@@ -314,7 +314,7 @@ export default function TemplateEditorPage() {
 
           <p className="sub">
             Design a look for the Shared Screen, then save it as a preset you can apply to any room. The color theme
-            also carries over to Player and Czar phones — layout and card sizing stay Shared-Screen-only.
+            also carries over to Player and Judge phones — layout and card sizing stay Shared-Screen-only.
           </p>
 
           <div className="editor-field">

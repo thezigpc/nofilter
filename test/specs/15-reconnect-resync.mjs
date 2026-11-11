@@ -44,7 +44,7 @@ export default async function ({ baseUrl }) {
 
     // --- One other player submits, so Bob's view is now genuinely stale
     // while the round is still open for him to rejoin into.
-    const mover = [alice, carol].find((c) => c.me && !c.me.isCzar);
+    const mover = [alice, carol].find((c) => c.me && !c.me.isJudge);
     // Must match the prompt: roughly one black card in ten is pick-2 or
     // pick-3, and submitting a single card for those is rejected outright
     // as WRONG_CARD_COUNT - which made this spec fail about that often.
@@ -89,7 +89,7 @@ export default async function ({ baseUrl }) {
 
     // --- And he can still act, proving the seat is genuinely rebound
     // rather than just receiving read-only updates.
-    if (!bob.me.isCzar && bob.state.phase === "submission" && !bob.me.hasSubmitted) {
+    if (!bob.me.isJudge && bob.state.phase === "submission" && !bob.me.hasSubmitted) {
       const bobPick = bob.state.blackCard?.pick ?? 1;
       const bobCards = (bob.state.yourHand ?? []).filter((x) => !x.actionCardId).slice(0, bobPick);
       const errorsBefore = bob.errors.length;

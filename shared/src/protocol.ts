@@ -1,6 +1,7 @@
 import type { BlackCard, PackSummary, WhiteCard } from "./cards.js";
 import type { ActionCardTier, ActionCardTierWeights } from "./actionCards.js";
 import type { GameSetup, GameSetupPreset } from "./gameSetups.js";
+import type { RoleNames } from "./roleNames.js";
 
 export type Role = "player" | "table";
 
@@ -15,22 +16,22 @@ export type Phase =
   | "gameEnd";
 
 export interface HouseRules {
-  randoCardrissian: boolean;
-  /** Off by default: Rando's own submission winning a round is normally a
+  wildCard: boolean;
+  /** Off by default: Wild Card's own submission winning a round is normally a
    * no-op (no score, no won black card) so it can never win or end the
-   * game on an inflated score. Turning this on makes Rando a real
+   * game on an inflated score. Turning this on makes Wild Card a real
    * competitor - it scores and can win/tie like anyone else. Meaningless
-   * without randoCardrissian also on. */
-  randoCanScore: boolean;
+   * without wildCard also on. */
+  wildCardCanScore: boolean;
   doubleDown: boolean;
   tradeIn: boolean;
   /** Once per game, discard your whole hand and draw a fresh one for free. */
   handRefresh: boolean;
   /** Hides the Scoreboard and disables the score-based auto game-end — only the host's End Game button ends it. */
   noScorekeeping: boolean;
-  /** Lets the Card Czar write their own black card for the round instead of drawing one. */
+  /** Lets the Judge write their own black card for the round instead of drawing one. */
   customPrompts: boolean;
-  /** No Card Czar — every player submits, then everyone votes (excluding their own card) for the winner. */
+  /** No Judge — every player submits, then everyone votes (excluding their own card) for the winner. */
   crowdFavorite: boolean;
   /** Automatically redraws your hand back to full (one card at a time) right after you submit, instead of requiring a manual Draw click. */
   autoDraw: boolean;
@@ -69,8 +70,8 @@ export interface DeckOptions {
 }
 
 export const DEFAULT_HOUSE_RULES: HouseRules = {
-  randoCardrissian: false,
-  randoCanScore: false,
+  wildCard: false,
+  wildCardCanScore: false,
   doubleDown: false,
   tradeIn: false,
   handRefresh: false,
@@ -120,7 +121,7 @@ export const PERSONAL_CARDS_GRACE_SECONDS = 10;
 export const HOST_CLAIM_AFTER_SECONDS = 120;
 
 // The Table's shared-screen zoom level is room-level state (not per-device
-// localStorage) so the active Czar can adjust it remotely from their own
+// localStorage) so the active Judge can adjust it remotely from their own
 // phone and the Table reflects it immediately.
 export const DEFAULT_TABLE_SCALE = 1.35;
 export const MIN_TABLE_SCALE = 0.8;
@@ -448,19 +449,19 @@ export const DEFAULT_GAME_NAME = "No Filter";
 
 export function minPlayersToStart(houseRules: HouseRules): number {
   // Crowd Favorite needs a real contest to vote on - everyone submits, so
-  // Rando covering "one submitter slot" doesn't shrink the floor the same
-  // way it does for a normal Czar-judged round.
+  // Wild Card covering "one submitter slot" doesn't shrink the floor the same
+  // way it does for a normal Judge-judged round.
   if (houseRules.crowdFavorite) return 3;
-  // One Czar plus at least this many submitters (Rando covers one submitter slot).
-  return houseRules.randoCardrissian ? 2 : 3;
+  // One Judge plus at least this many submitters (Wild Card covers one submitter slot).
+  return houseRules.wildCard ? 2 : 3;
 }
 
-/** Once a game is underway, a voluntary leave that drops real (non-Rando)
+/** Once a game is underway, a voluntary leave that drops real (non-Wild Card)
  * players below this floor ends the game immediately on current standings.
  * Mirrors minPlayersToStart's exact logic (Crowd Favorite needs 3 real
- * voters, Rando Cardrissian covers one submitter slot down to 2) - this
+ * voters, Wild Card covers one submitter slot down to 2) - this
  * used to be a flat constant of 3 regardless of house rules, which meant a
- * 3-real-player Rando game that lost one player to a leave was force-ended
+ * 3-real-player Wild Card game that lost one player to a leave was force-ended
  * even though a brand new room could have started fresh at 2 with the same
  * rules on. Kept as a separate function (not a re-export of
  * minPlayersToStart) since "can this room start" and "can this room keep
@@ -479,10 +480,10 @@ export interface PublicPlayer {
   isHost: boolean;
   score: number;
   wonBlackCardCount: number;
-  isCzar: boolean;
+  isJudge: boolean;
   /** True once this player has a lineup entry in for the current round. */
   hasSubmitted: boolean;
-  isRando?: boolean;
+  isWildCard?: boolean;
   /** How many personal cards this player has written so far - a count
    * only, never the text, so other viewers get ambient progress ("3/5")
    * without seeing anyone else's private submissions. Only meaningful
@@ -491,9 +492,9 @@ export interface PublicPlayer {
 }
 
 /**
- * One lineup slot on the judging board, sent only to the Czar and the Table
+ * One lineup slot on the judging board, sent only to the Judge and the Table
  * (see CLAUDE.md: everyone else just waits and finds out at RoundEnd).
- * Cards are null until the Czar/Table has actually flipped that slot.
+ * Cards are null until the Judge/Table has actually flipped that slot.
  */
 export interface JudgingCardSlot {
   submissionId: string;
@@ -528,7 +529,7 @@ export interface DoubleDownOffer {
   /** Whether the player currently holds a won black card to spend as the wager. */
   eligible: boolean;
   /** True when the replacement card is an Action Card, not a joke card - it
-   * can't be wagered (submitting it would hand the Czar an Action Card's
+   * can't be wagered (submitting it would hand the Judge an Action Card's
    * name/description as an "answer"), but it's still a normal hand card
    * otherwise and can be played the usual way. */
   isActionCard: boolean;
@@ -561,6 +562,9 @@ export interface RoomStateForClient {
   spotlightScale: number;
   scoreboardScale: number;
   tableStyle: TableStyle;
+  /** What this room calls the Judge and the Wild Card bot. Every
+   * player-visible mention of either role reads from here. */
+  roleNames: RoleNames;
   packs: PackSummary[];
   selectedPackIds: string[];
   /** Only ever populated by applying a saved PackSelectionPreset - not a
@@ -568,7 +572,7 @@ export interface RoomStateForClient {
   excludedCardIds: string[];
   players: PublicPlayer[];
   blackCard: BlackCard | null;
-  /** Set by a played "flavor"-shape Action Card (see shared/src/actionCards.ts) - a judging-time instruction for the Czar, shown near the black card during reveal/judging. Cleared at finishRound(). */
+  /** Set by a played "flavor"-shape Action Card (see shared/src/actionCards.ts) - a judging-time instruction for the Judge, shown near the black card during reveal/judging. Cleared at finishRound(). */
   pendingJudgingMessage: string | null;
   /** Per-card frequency for Action Cards (see shared/src/actionCards.ts).
    * Always covers every card in ACTION_CARD_DEFS. */
@@ -577,11 +581,11 @@ export interface RoomStateForClient {
    * override of the server defaults; intentionally not shown on the
    * shared screen. */
   actionCardTierWeights: ActionCardTierWeights;
-  /** True when this round is decided by a vote rather than by the Czar -
+  /** True when this round is decided by a vote rather than by the Judge -
    * either because Crowd Favorite is on for the whole game, or because
    * someone played the Democracy Action Card this round. Clients branch on
    * this (not houseRules.crowdFavorite) for anything judging-related.
-   * Who *submits* is unaffected: the Czar still sits the round out. */
+   * Who *submits* is unaffected: the Judge still sits the round out. */
   votingThisRound: boolean;
   /** When a disconnected host becomes claimable by anyone else, or null if
    * the host is present. Clients count down to it; the server enforces it. */
@@ -601,12 +605,12 @@ export interface RoomStateForClient {
   /** Only present for the recipient's own seat during the personalCards phase - the cards they've written so far. */
   yourPersonalCards?: WhiteCard[];
 
-  /** Only present during reveal/judging, and only sent to the Czar or the Table. */
+  /** Only present during reveal/judging, and only sent to the Judge or the Table. */
   judgingBoard?: JudgingCardSlot[];
-  /** Whether the recipient (Czar or Table) may still shuffle — locked once any card is revealed. */
+  /** Whether the recipient (Judge or Table) may still shuffle — locked once any card is revealed. */
   shuffleLocked?: boolean;
   /** Server-synced so the spotlight opens/closes together on the Table and
-   * the Czar's own phone, whichever one triggers it — not per-client local
+   * the Judge's own phone, whichever one triggers it — not per-client local
    * state. Only present alongside judgingBoard. */
   spotlightSubmissionId?: string | null;
 
@@ -622,7 +626,7 @@ export interface RoomStateForClient {
   you: {
     id: string;
     role: Role;
-    isCzar: boolean;
+    isJudge: boolean;
     isHost: boolean;
   };
 }
@@ -728,7 +732,7 @@ export interface SubmitCardsRequest {
   cardIds: string[];
 }
 
-export interface CzarPickRequest {
+export interface JudgePickRequest {
   submissionId: string;
 }
 
@@ -871,6 +875,7 @@ export interface ClientToServerEvents {
   updatePackSelection: (req: UpdatePackSelectionRequest) => void;
   updateExcludedCards: (req: UpdateExcludedCardsRequest) => void;
   updateHouseRules: (req: UpdateHouseRulesRequest) => void;
+  updateRoleNames: (req: { roleNames: Partial<RoleNames> }) => void;
   updateWinCondition: (req: UpdateWinConditionRequest) => void;
   applyGameSetup: (req: { setup: GameSetup }) => void;
   listGameSetupPresets: (cb: (presets: GameSetupPreset[]) => void) => void;
@@ -913,8 +918,8 @@ export interface ClientToServerEvents {
   /** Host-only, gameEnd phase only — resets scores/hands/won black cards and returns to the Lobby with the same players and settings. */
   playAgain: () => void;
   skipBlackCard: () => void;
-  /** Host or the current Czar — bows out of judging this round, handing it to the next player in rotation and redealing. */
-  skipCzarTurn: () => void;
+  /** Host or the current Judge — bows out of judging this round, handing it to the next player in rotation and redealing. */
+  skipJudgeTurn: () => void;
   /** Host-only — excuses one slow/AFK player from being required to submit this round only, letting the round advance without them. */
   excusePlayerThisRound: (req: ExcusePlayerThisRoundRequest) => void;
   submitCustomBlackCard: (req: SubmitCustomBlackCardRequest) => void;
@@ -932,7 +937,7 @@ export interface ClientToServerEvents {
   revealSubmission: (req: RevealSubmissionRequest) => void;
   spotlightSubmission: (req: SpotlightSubmissionRequest) => void;
   clearSpotlight: () => void;
-  czarPick: (req: CzarPickRequest) => void;
+  judgePick: (req: JudgePickRequest) => void;
   voteForSubmission: (req: VoteForSubmissionRequest) => void;
   leaveRoom: () => void;
   kickPlayer: (req: KickPlayerRequest) => void;
@@ -985,6 +990,12 @@ export interface ClientToServerEvents {
    * so the browser tab title and HomePage heading can be set before any
    * socket connection exists. */
   setGameName: (req: { name: string }, cb: (res: { ok: boolean; error?: string; name?: string }) => void) => void;
+  /** Admin-only. The Judge/Wild Card names every new room starts with.
+   * Readable, unauthenticated, via GET /api/config. */
+  setDefaultRoleNames: (
+    req: { roleNames: RoleNames },
+    cb: (res: { ok: boolean; error?: string; roleNames?: RoleNames }) => void
+  ) => void;
   /** Admin-only. Sets the theme/accent/background look a brand new room
    * starts with, and that HomePage/Card Management/the admin page
    * themselves render with - those have no room of their own to inherit a

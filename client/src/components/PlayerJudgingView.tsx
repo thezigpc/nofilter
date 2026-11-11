@@ -3,10 +3,10 @@ import type { RoomStateForClient } from "@tabletop-judge/shared";
 import JudgingBoard from "./JudgingBoard.js";
 
 /**
- * What a regular (non-Czar, non-Table) player sees during Reveal/Judging:
+ * What a regular (non-Judge, non-Table) player sees during Reveal/Judging:
  * a Hand tab to browse their own cards (already locked in for the round,
  * so read-only), and a Table tab mirroring the same read-only judging
- * board the Czar/Table see - only ever-revealed cards, never anything
+ * board the Judge/Table see - only ever-revealed cards, never anything
  * still face-down. No Double Down offer here - that's a Submission-phase
  * decision, and once judging's underway it's already locked in one way or
  * the other, so there's nothing left to show or act on.

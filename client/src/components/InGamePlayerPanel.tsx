@@ -27,7 +27,7 @@ export default function InGamePlayerPanel({ state }: { state: RoomStateForClient
   }, [state.phase]);
 
   if (!state.you.isHost) return null;
-  const realPlayers = state.players.filter((p) => p.role === "player" && !p.isRando);
+  const realPlayers = state.players.filter((p) => p.role === "player" && !p.isWildCard);
 
   function makeHost(playerId: string, name: string) {
     if (window.confirm(`Hand host over to ${name}? You will not be able to take it back yourself.`)) {
@@ -52,12 +52,12 @@ export default function InGamePlayerPanel({ state }: { state: RoomStateForClient
       <h2>Players</h2>
       <ul className="player-list">
         {realPlayers.map((p) => {
-          const isRequired = state.votingThisRound || !p.isCzar;
+          const isRequired = state.votingThisRound || !p.isJudge;
           const canExcuse = state.phase === "submission" && !p.hasSubmitted && isRequired;
           return (
             <li key={p.id} className="player-row">
               <span>
-                {p.isCzar && <CrownIcon className="icon" />} {p.name}
+                {p.isJudge && <CrownIcon className="icon" />} {p.name}
                 {!p.connected && <span className="tag muted">disconnected</span>}
                 {p.hasSubmitted && <span className="tag">submitted</span>}
                 {canExcuse && <span className="tag muted">waiting {formatElapsed(now - state.dealtAt)}</span>}
@@ -71,7 +71,7 @@ export default function InGamePlayerPanel({ state }: { state: RoomStateForClient
                 {/* transferHost has never had a phase restriction server-side;
                     until now the only button for it lived in the Lobby, so a
                     host who needed to hand over mid-game simply could not. */}
-                {!p.isHost && !p.isRando && p.role === "player" && (
+                {!p.isHost && !p.isWildCard && p.role === "player" && (
                   <button type="button" onClick={() => makeHost(p.id, p.name)}>
                     Make host
                   </button>

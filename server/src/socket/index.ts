@@ -9,6 +9,7 @@ import type { Room } from "../rooms/Room.js";
 import { customSetToPackSummary } from "../rooms/Room.js";
 import { getCoreSetInfo, uploadCoreSet } from "../cards/coreSet.js";
 import { setGameName } from "../gameName/store.js";
+import { setDefaultRoleNames } from "../roleNames/store.js";
 import { setDefaultTheme } from "../tableStyle/store.js";
 import { deletePreset, listPresets, savePreset } from "../presets/store.js";
 import { addBlackCard, addWhiteCard, deleteCard, listCustomCards, mergeUploadedCards } from "../customCards/store.js";
@@ -240,6 +241,12 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
     );
 
     socket.on(
+      "updateRoleNames",
+      (req) =>
+        withRoom((room, pid) => room.updateRoleNames(pid, req?.roleNames ?? {}))()
+    );
+
+    socket.on(
       "updateWinCondition",
       (req) =>
         withRoom((room, pid) => room.updateWinCondition(pid, req.target, req.mode))()
@@ -298,7 +305,7 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
 
     socket.on("skipBlackCard", withRoom((room, pid) => room.skipBlackCard(pid)));
 
-    socket.on("skipCzarTurn", withRoom((room, pid) => room.skipCzarTurn(pid)));
+    socket.on("skipJudgeTurn", withRoom((room, pid) => room.skipJudgeTurn(pid)));
 
     socket.on("excusePlayerThisRound", (req) =>
       withRoom((room, pid) => room.excusePlayerThisRound(pid, req.playerId))()
@@ -409,9 +416,9 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
     socket.on("clearSpotlight", withRoom((room, pid) => room.clearSpotlight(pid)));
 
     socket.on(
-      "czarPick",
+      "judgePick",
       (req) =>
-        withRoom((room, pid) => room.czarPick(pid, req.submissionId))()
+        withRoom((room, pid) => room.judgePick(pid, req.submissionId))()
     );
 
     socket.on(
@@ -604,6 +611,14 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
       if (typeof name !== "string" || !name.trim()) return cb({ ok: false, error: "Name can't be empty." });
       const next = await setGameName(name);
       cb({ ok: true, name: next });
+    });
+
+    // Forward-looking only, like setDefaultTheme: RoomManager.createRoom()
+    // reads the store directly, so rooms already open keep their names.
+    socket.on("setDefaultRoleNames", async (req, cb) => {
+      if (!(await requireAdmin("setDefaultRoleNames"))) return cb({ ok: false, error: "ADMIN_REQUIRED" });
+      const roleNames = await setDefaultRoleNames(req?.roleNames);
+      cb({ ok: true, roleNames });
     });
 
     socket.on(

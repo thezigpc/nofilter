@@ -4,17 +4,17 @@ import { socket } from "../socket.js";
 import { RefreshIcon, SkipForwardIcon } from "./Icons.js";
 
 /**
- * Shared between WaitingPanel (the Czar's Submission-phase wait, normal
+ * Shared between WaitingPanel (the Judge's Submission-phase wait, normal
  * games) and PlayerHandView (the round-host in Crowd Favorite mode, who
  * submits a card too and so never sees WaitingPanel at all) - same
- * host-or-Czar Skip authority and Czar-only Custom Prompts form either way.
+ * host-or-Judge Skip authority and Judge-only Custom Prompts form either way.
  */
-export default function CzarBlackCardControls({ state }: { state: RoomStateForClient }) {
+export default function JudgeBlackCardControls({ state }: { state: RoomStateForClient }) {
   const [customText, setCustomText] = useState("");
   const [customPick, setCustomPick] = useState<1 | 2 | 3>(1);
 
-  const canSkip = state.you.isHost || state.you.isCzar;
-  const canCustomPrompt = state.houseRules.customPrompts && state.you.isCzar;
+  const canSkip = state.you.isHost || state.you.isJudge;
+  const canCustomPrompt = state.houseRules.customPrompts && state.you.isJudge;
   if (!canSkip && !canCustomPrompt) return null;
 
   function submitCustomPrompt() {
@@ -42,7 +42,7 @@ export default function CzarBlackCardControls({ state }: { state: RoomStateForCl
             type="button"
             onClick={() => {
               if (window.confirm("Skip your turn? The round redeals and passes to the next player.")) {
-                socket.emit("skipCzarTurn");
+                socket.emit("skipJudgeTurn");
               }
             }}
           >

@@ -7,13 +7,13 @@ export default async function ({ baseUrl }) {
   const host = room.host;
   try {
     // Baseline: a fresh room is on the defaults.
-    assert(!host.state.houseRules.randoCardrissian, "a fresh room should not have Rando on");
+    assert(!host.state.houseRules.wildCard, "a fresh room should not have Wild Card on");
     assertEqual(host.state.winCondition.mode, "blackCards", "default win mode");
 
     // --- "Chaos" turns several rules on at once.
     host.emit("applyGameSetup", {
       setup: {
-        houseRules: { ...host.state.houseRules, randoCardrissian: true, doubleDown: true, actionCards: true },
+        houseRules: { ...host.state.houseRules, wildCard: true, doubleDown: true, actionCards: true },
         winCondition: { mode: "blackCards", target: 9 },
         handSize: 12,
         actionCardDensity: 6,
@@ -21,7 +21,7 @@ export default async function ({ baseUrl }) {
     });
     await waitFor(
       () =>
-        host.state.houseRules.randoCardrissian &&
+        host.state.houseRules.wildCard &&
         host.state.houseRules.doubleDown &&
         host.state.houseRules.actionCards,
       { label: "the setup's house rules to apply" }
