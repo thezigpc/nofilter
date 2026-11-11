@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Table Screen Mockups</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #17171b;
+    --paper-2: #1e1e24;
+    --ink: #f0efe6;
+    --ink-soft: #9d9ca6;
+    --accent: #4c6fff;
+    --rule: #2c2b33;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Barlow", -apple-system, sans-serif;
+    padding: clamp(2rem, 5vw, 4rem);
+  }
+  .kicker {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    color: var(--accent);
+    margin: 0 0 0.6rem;
+  }
+  h1 {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 800;
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    margin: 0 0 0.6rem;
+  }
+  p.dek {
+    color: var(--ink-soft);
+    max-width: 62ch;
+    line-height: 1.55;
+    margin: 0 0 2.5rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    max-width: 1100px;
+  }
+  a.card {
+    display: block;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    border-radius: 16px;
+    padding: 1.6rem 1.7rem;
+    text-decoration: none;
+    color: var(--ink);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  a.card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .swatch {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
+  .swatch span {
+    width: 22px; height: 22px; border-radius: 6px;
+  }
+  h2 {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 800;
+    font-size: 1.5rem;
+    margin: 0 0 0.5rem;
+  }
+  .card p {
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    line-height: 1.5;
+    margin: 0;
+  }
+  .view {
+    display: inline-block;
+    margin-top: 1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+</style>
+</head>
+<body>
+  <p class="kicker">Design exploration</p>
+  <h1>Table Screen — Big-Screen Mockups</h1>
+  <p class="dek">
+    Three directions for redesigning the shared Table/TV view so it's actually readable from across a room, rather than
+    the current approach (the phone layout, uniformly zoomed up). Each one is a real HTML page you can open directly —
+    click through, then say which one to build for real.
+  </p>
+
+  <div class="grid">
+    <a class="card" href="table-felt-and-ink.html">
+      <div class="swatch">
+        <span style="background:#101014"></span>
+        <span style="background:#4c6fff"></span>
+        <span style="background:#f5f4ee"></span>
+      </div>
+      <h2>Felt &amp; Ink</h2>
+      <p>Evolves the app's existing dark/blue identity for landscape TV — a fanned hand of cards, condensed display type, cool blue accent. The safest, most on-brand option.</p>
+      <span class="view">Open mockup →</span>
+    </a>
+
+    <a class="card" href="table-bulletin.html">
+      <div class="swatch">
+        <span style="background:#0a0a0c"></span>
+        <span style="background:#ffb020"></span>
+        <span style="background:#eceae3"></span>
+      </div>
+      <h2>Bulletin</h2>
+      <p>Stadium-jumbotron energy — true black, one hot amber accent, a tabular scoreboard strip, monospace utility type. The boldest, highest-contrast option for viewing at real distance.</p>
+      <span class="view">Open mockup →</span>
+    </a>
+
+    <a class="card" href="table-parlour.html">
+      <div class="swatch">
+        <span style="background:#1a1410"></span>
+        <span style="background:#d98a3d"></span>
+        <span style="background:#efe6d8"></span>
+      </div>
+      <h2>Parlour</h2>
+      <p>Warm, lamp-lit, tactile — an italic serif for the black card (read aloud at the table), cards fanned like a real hand instead of a grid. The warmest, most "physical game night" option.</p>
+      <span class="view">Open mockup →</span>
+    </a>
+  </div>
+
+  <h1 style="margin-top:3rem; font-size:clamp(1.6rem,3vw,2.2rem);">Interactive: Table Layouts</h1>
+  <p class="dek">
+    A second round of exploration, now that Felt &amp; Ink and Bulletin are live in the real app — this isn't about color
+    anymore, it's about information architecture. Two real layouts (a dense sidebar-scoreboard grid, a persistent
+    status strip) with a submissions area that dynamically fills whatever space is available — bigger cards at low
+    player counts, packing in proportionally as more join — plus an independent black-card size control. (A third
+    direction, a fanned "Distance Arc" hand, was tried and cut here too — same illegible-overlap problem as the
+    original Parlour mockup, even on a real big-screen canvas.)
+  </p>
+  <div class="grid">
+    <a class="card" href="table-layouts.html" style="grid-column: 1 / -1;">
+      <div class="swatch">
+        <span style="background:#101014"></span>
+        <span style="background:#4c6fff"></span>
+        <span style="background:#ffb020"></span>
+      </div>
+      <h2>Table Layouts (live)</h2>
+      <p>Switch between three layout directions, both themes, and stress-test player count / pick count — everything updates the preview in real time.</p>
+      <span class="view">Open interactive mockup →</span>
+    </a>
+  </div>
+
+  <h1 style="margin-top:3rem; font-size:clamp(1.6rem,3vw,2.2rem);">Interactive: Style Picker</h1>
+  <p class="dek">
+    A working prototype of choosing a Table style at room setup — live theme switching, a softer accent-color alternative
+    to Bulletin's amber, a text-size slider, and (since these matter for how well any of these actually hold up) sliders
+    for player count and black-card pick count, so you can stress-test each look at 15-20 players and pick-2/3 rounds,
+    not just a comfy 4-player pick-1 game.
+  </p>
+  <div class="grid">
+    <a class="card" href="table-style-picker.html" style="grid-column: 1 / -1;">
+      <div class="swatch">
+        <span style="background:#101014"></span>
+        <span style="background:#0a0a0c"></span>
+        <span style="background:#1a1410"></span>
+      </div>
+      <h2>Style Picker (live)</h2>
+      <p>Open and play with it directly — every control updates the preview in real time.</p>
+      <span class="view">Open interactive mockup →</span>
+    </a>
+  </div>
+</body>
+</html>

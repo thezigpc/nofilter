@@ -1,0 +1,438 @@
+<title>Tabletop Judge</title>
+<style>
+  :root {
+    --paper: #faf9f5;
+    --paper-2: #f0efe6;
+    --ink: #17171b;
+    --ink-soft: #55544d;
+    --rule: #dad8cc;
+    --accent: #2547e0;
+    --accent-soft: #e8ecfc;
+    --flag: #8a5a0a;
+    --flag-soft: #f4e9d6;
+
+    --card-black-bg: #17171b;
+    --card-black-fg: #faf9f5;
+    --card-black-sub: #a9a8a2;
+    --card-white-bg: #ffffff;
+    --card-white-fg: #17171b;
+    --card-white-sub: #55544d;
+    --card-border: rgba(0,0,0,0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #131215;
+      --paper-2: #1c1b1f;
+      --ink: #f1efe9;
+      --ink-soft: #a9a89f;
+      --rule: #333139;
+      --accent: #7590ff;
+      --accent-soft: #202849;
+      --flag: #e0ab5c;
+      --flag-soft: #3a2c14;
+      --card-border: rgba(255,255,255,0.08);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #131215;
+    --paper-2: #1c1b1f;
+    --ink: #f1efe9;
+    --ink-soft: #a9a89f;
+    --rule: #333139;
+    --accent: #7590ff;
+    --accent-soft: #202849;
+    --flag: #e0ab5c;
+    --flag-soft: #3a2c14;
+    --card-border: rgba(255,255,255,0.08);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 8rem;
+  }
+
+  .kicker {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-weight: 800;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.9rem;
+  }
+
+  h1 {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    font-size: clamp(2.1rem, 5vw, 3rem);
+    line-height: 1.05;
+    margin: 0 0 0.6rem;
+    text-wrap: balance;
+  }
+
+  .dek {
+    font-size: 1.1rem;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    margin: 0 0 3rem;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 3.2rem 0 2.2rem;
+  }
+
+  h2 {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    font-size: 1.5rem;
+    margin: 0 0 0.35rem;
+  }
+
+  .section-note {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin: 0 0 1.6rem;
+  }
+
+  h3 {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin: 2rem 0 0.6rem;
+  }
+
+  p { margin: 0 0 1.1rem; max-width: 68ch; }
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.45rem; max-width: 64ch; }
+  strong { color: var(--ink); }
+
+  code, .mono {
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 0.88em;
+  }
+
+  pre {
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: var(--ink);
+    margin: 0 0 1.3rem;
+  }
+
+  /* card-object components: fixed black/white regardless of page theme */
+  .cardrow {
+    display: grid;
+    gap: 0.9rem;
+    margin: 1.4rem 0 1.8rem;
+  }
+  @media (min-width: 620px) {
+    .cardrow.three { grid-template-columns: repeat(3, 1fr); }
+    .cardrow.two { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .card {
+    border-radius: 10px;
+    padding: 1.15rem 1.2rem 1.3rem;
+    border: 1px solid var(--card-border);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  .card-black { background: var(--card-black-bg); color: var(--card-black-fg); }
+  .card-black .card-sub { color: var(--card-black-sub); }
+  .card-white { background: var(--card-white-bg); color: var(--card-white-fg); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .card-white .card-sub { color: var(--card-white-sub); }
+
+  .card-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.65;
+    margin-bottom: 0.5rem;
+  }
+  .card-title {
+    font-weight: 800;
+    font-size: 1.05rem;
+    margin-bottom: 0.4rem;
+    line-height: 1.25;
+  }
+  .card-sub {
+    font-family: Georgia, serif;
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  /* flow steps */
+  .flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 1.2rem 0 1.6rem;
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  .step {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+  .arrow { color: var(--ink-soft); font-size: 0.9rem; }
+
+  .flag {
+    display: block;
+    background: var(--flag-soft);
+    border-left: 3px solid var(--flag);
+    border-radius: 0 6px 6px 0;
+    padding: 0.8rem 1rem;
+    margin: 0 0 1.3rem;
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 0.88rem;
+    color: var(--ink);
+  }
+  .flag b {
+    color: var(--flag);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+    margin: 0 0 1.5rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--rule);
+    font-variant-numeric: tabular-nums;
+  }
+  th { color: var(--ink-soft); font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.06em; }
+
+  .tablewrap { overflow-x: auto; margin-bottom: 1.5rem; }
+
+  footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+</style>
+
+<div class="wrap">
+
+  <p class="kicker">System design — draft</p>
+  <h1>Tabletop Judge</h1>
+  <p class="dek">A phone-and-shared-screen build of Cards Against Humanity: a host server, room codes, phones as hands, and an optional shared display for the table.</p>
+
+  <hr class="divider">
+
+  <h2>Roles, not devices</h2>
+  <p class="section-note">One web app; the role is chosen at join time, not baked into the build.</p>
+
+  <p>Every connected client is one of three roles in the same room. None of them are separate apps — a phone and a tablet load the same page and just present differently depending on which role was picked at join.</p>
+
+  <div class="cardrow three">
+    <div class="card card-white">
+      <div class="card-label">Role · Phone</div>
+      <div class="card-title">Player</div>
+      <div class="card-sub">Holds a hand of white cards, sees the current black card, submits face-down (ordered, for pick-2/pick-3), sees the scoreboard.</div>
+    </div>
+    <div class="card card-black">
+      <div class="card-label">Role · Rotates</div>
+      <div class="card-title">Card Czar</div>
+      <div class="card-sub">Not a separate client — whichever player's turn it is gets Czar-only UI on their own phone: reveal submissions, pick the winner.</div>
+    </div>
+    <div class="card card-white">
+      <div class="card-label">Role · Optional</div>
+      <div class="card-title">Table</div>
+      <div class="card-sub">Tablet, laptop, or TV. No hand of its own — shows the black card large, shows submissions face-down, mirrors whoever is currently Czar.</div>
+    </div>
+  </div>
+
+  <h3>The Table doesn't belong to a player</h3>
+  <p>Rather than manually "passing" the tablet, the Table client auto-follows the active Czar each round — the server just tells it whose reveal/pick view to mirror. That matches how the physical game works: the deck sits in the middle, and whoever's turn it is reads from it. If the current Czar would rather use the shared screen than fumble their own phone, the same reveal/pick controls work from either surface — the Table is a mirror, not a separate source of truth.</p>
+
+  <hr class="divider">
+
+  <h2>Room lifecycle &amp; pairing</h2>
+  <p class="section-note">Short codes, persistent seats, no lost hands on a locked phone.</p>
+
+  <div class="flow">
+    <span class="step">Host creates room</span><span class="arrow">→</span>
+    <span class="step">Room code generated</span><span class="arrow">→</span>
+    <span class="step">Players + Table join with code</span><span class="arrow">→</span>
+    <span class="step">Host picks packs, starts</span>
+  </div>
+
+  <ul>
+    <li><strong>Room code:</strong> 4–6 characters, letters/digits only, excluding visually ambiguous ones (0/O, 1/I) — read out loud or typed on a phone keyboard without confusion.</li>
+    <li><strong>Join flow:</strong> enter the code, pick a name, pick a role (Player or Table). The server hands back a persistent client token, stored on-device, distinct from the room code.</li>
+    <li><strong>Reconnects:</strong> that token is what actually matters. A phone that locks, backgrounds, or drops wifi mid-round reconnects to the same seat and hand automatically — the room code alone doesn't guarantee that, so it's treated as a separate concern from day one rather than patched in later.</li>
+    <li><strong>Table doesn't take a seat:</strong> it joins the room but never enters the player rotation or holds cards.</li>
+  </ul>
+
+  <hr class="divider">
+
+  <h2>Card data</h2>
+  <p class="section-note">Built from the supplied <code>cah-cards-full.json</code> — 427 packs, official CAH plus third-party.</p>
+
+  <p>The source file is an array of packs, each with a name, an official/third-party flag, and its own white and black cards:</p>
+
+  <pre>[{
+  "name": "Cards Against Humanity: Big Bad Bundle",
+  "official": true,
+  "sheetName": "CAH A Few Extra",
+  "white": [
+    { "text": "My private island.", "pack": "107" }
+  ],
+  "black": [
+    { "text": "There must be more to life than _.", "pick": 1, "pack": "107" }
+  ]
+}]</pre>
+
+  <p>Blanks on black cards are marked with a single <code>_</code>; <code>pick</code> is how many white cards fill them. Distribution across the file:</p>
+
+  <div class="tablewrap">
+    <table>
+      <tr><th>Pick value</th><th>Black cards</th><th>Meaning</th></tr>
+      <tr><td>1</td><td>16,762</td><td>Standard — one card fills the blank</td></tr>
+      <tr><td>2</td><td>1,638</td><td>Player submits two, in order</td></tr>
+      <tr><td>3</td><td>172</td><td>Player submits three, in order</td></tr>
+      <tr><td>4</td><td>3</td><td>Outliers — worth spot-checking by hand</td></tr>
+    </table>
+  </div>
+
+  <div class="flag">
+    <b>Unresolved</b>
+    Some packs also carry a <code>mechanic</code> array of numeric IDs (e.g. <code>[46,47,48]</code>) with no lookup table in this file. Likely references special rules from the source scrape. Treating it as inert metadata until/unless its meaning turns up — worth a quick check before it's ignored for good.
+  </div>
+
+  <h3>Deck build is per-room, not global</h3>
+  <p>At room creation, the host is shown the pack list (name, official/third-party, card counts) and checks which ones to include — an "official only" shortcut plus the ability to add specific third-party packs. The server merges the selected packs' white and black cards into that room's deck at start time. Swapping or upgrading <code>cah-cards-full.json</code> later just changes what shows up in the picker; it isn't wired into any client code.</p>
+
+  <hr class="divider">
+
+  <h2>Round flow</h2>
+  <p class="section-note">Server-authoritative state machine — clients render state and send intents, never resolve the round themselves.</p>
+
+  <div class="flow">
+    <span class="step">1 Lobby</span><span class="arrow">→</span>
+    <span class="step">2 Dealing</span><span class="arrow">→</span>
+    <span class="step">3 Submission</span><span class="arrow">→</span>
+    <span class="step">4 Reveal</span><span class="arrow">→</span>
+    <span class="step">5 Judging</span><span class="arrow">→</span>
+    <span class="step">6 Round End</span>
+  </div>
+
+  <p>Round End loops back to Dealing until the game's win condition is hit, then falls through to Game End. A few of these steps carry real logic worth calling out:</p>
+
+  <ul>
+    <li><strong>Dealing:</strong> server tops every hand up to its target size from the room's shuffled white deck; reshuffles the discard pile back in if the deck runs dry.</li>
+    <li><strong>Submission:</strong> for a pick-2/pick-3 black card, the player arranges their chosen cards in order client-side and submits an ordered array — the server enforces the count and preserves that order through to Reveal, since sequence changes the joke.</li>
+    <li><strong>Reveal:</strong> submissions are shown anonymized and shuffled, never in submission order, so the Czar can't infer who played what from timing.</li>
+    <li><strong>Judging:</strong> only the Czar's client (phone or Table, whichever they're using) can send the pick; the server rejects a pick from anyone else.</li>
+  </ul>
+
+  <hr class="divider">
+
+  <h2>House rules</h2>
+  <p class="section-note">Each rule is a hook into the state machine — submission validation, dealing, or scoring — toggled per room at creation. Not special-cased inline, so adding the next one doesn't mean touching the core loop.</p>
+
+  <div class="cardrow two">
+    <div class="card card-black">
+      <div class="card-label">House rule</div>
+      <div class="card-title">Rando Cardrissian</div>
+      <div class="card-sub">Each round, the server auto-submits one random white card from a virtual player who never wins or scores — pure chaos filler in the lineup. Hooks into Dealing (draws a card) and Submission (auto-fills it) only.</div>
+    </div>
+    <div class="card card-black">
+      <div class="card-label">House rule</div>
+      <div class="card-title">Double Down</div>
+      <div class="card-sub">Hooks into Submission, Judging, and Scoring — detailed below.</div>
+    </div>
+  </div>
+
+  <h3>Double Down, resolved</h3>
+  <ol>
+    <li>A player submits a white card as normal for the round.</li>
+    <li>They're dealt a replacement immediately (not held back until Round End, so the new card is in hand while the round is still live).</li>
+    <li>If they'd rather play that replacement instead, and they hold at least one black card won from a <em>previous</em> round, they can wager it — that spends one won black card as the stake.</li>
+    <li>Wagering adds the replacement to the lineup as a <strong>second</strong> entry from the same player, alongside their original — not a swap. The Czar sees two anonymized cards from that player without knowing they're linked.</li>
+    <li><strong>If either of the two wins:</strong> the player keeps that round's black card <em>and</em> gets the wagered one back — a double-down pays for itself. <strong>If neither wins:</strong> the wagered black card is lost back to the box, on top of not winning the round.</li>
+  </ol>
+
+  <p>Because the stake is a previously-won black card, a player can't double down before they've won at least once — the mechanic is load-bearing on scoring rather than a separate currency to track.</p>
+
+  <hr class="divider">
+
+  <h2>Suggested stack</h2>
+  <p class="section-note">Sized for the confirmed target: private games, a handful of concurrent rooms, not a public matchmaking service.</p>
+
+  <ul>
+    <li><strong>Backend:</strong> Node.js + WebSocket (Socket.io for its room/namespace handling), single process, in-memory room state. No database or Redis needed at this scale — room state can live and die with the process, and a restart just means restarting whatever game was in progress.</li>
+    <li><strong>Frontend:</strong> one React app, role-aware from a query param or route (<code>/room/ABCD?role=player</code> vs <code>?role=table</code>) rather than separate builds.</li>
+    <li><strong>No native app:</strong> everything is mobile web — join via room code in a browser, same pattern as Jackbox/Kahoot, no App Store friction for a private game night.</li>
+  </ul>
+
+  <hr class="divider">
+
+  <h2>Deployment</h2>
+  <p class="section-note">Node server on a home machine, Cloudflare Tunnel for the public URL, domain already on Cloudflare.</p>
+
+  <div class="flow">
+    <span class="step">cloudflared on host machine</span><span class="arrow">→</span>
+    <span class="step">named tunnel</span><span class="arrow">→</span>
+    <span class="step">DNS CNAME → tunnel</span><span class="arrow">→</span>
+    <span class="step">public hostname</span>
+  </div>
+
+  <ul>
+    <li><strong>Tunnel, not port forwarding:</strong> <code>cloudflared</code> runs on the same machine as the Node server and makes an outbound connection to Cloudflare — no router port forwarding, no exposed home IP. Cloudflare terminates TLS at the edge.</li>
+    <li><strong>Setup shape:</strong> authenticate <code>cloudflared</code> against the Cloudflare account, create a named tunnel, point a subdomain at it with <code>cloudflared tunnel route dns</code> (e.g. <code>cah.yourdomain.com</code>), and give the tunnel a small config file mapping that hostname to the local Node port. Running it as a service (<code>cloudflared service install</code>) keeps it up across reboots.</li>
+    <li><strong>WebSockets just work:</strong> Cloudflare Tunnel proxies the Upgrade handshake through to origin with no special config — Socket.io traffic passes through the same as plain HTTP.</li>
+    <li><strong>URL stays open, no Cloudflare Access:</strong> the join screen is reachable by anyone with the link — no login wall in front of it, so a friend can tap the link and go straight to typing a room code. That shifts the actual security burden onto the room code itself:
+      <ul>
+        <li>Codes should be short-lived — expire or become unjoinable once a room starts (or after some idle timeout in the lobby), not valid indefinitely.</li>
+        <li>Worth rate-limiting join attempts per room code so guessing 4–6 characters isn't cheap.</li>
+        <li>Since it's a private-use target rather than public matchmaking, this is a reasonable trade — an unguessable code plus a short window is enough friction without making guests log in.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <footer>
+    Draft for review — scope and mechanics above reflect decisions made so far; flagged items are the open ones.
+  </footer>
+
+</div>

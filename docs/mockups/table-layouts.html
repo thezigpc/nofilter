@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Table Layout Exploration — Interactive Mockup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&family=Big+Shoulders+Display:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ui-bg: #131217;
+    --ui-panel: #1a1922;
+    --ui-rule: #2a2933;
+    --ui-ink: #f0efe6;
+    --ui-ink-soft: #9c9aa8;
+    --ui-accent: #7590ff;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--ui-bg);
+    color: var(--ui-ink);
+    font-family: -apple-system, "Segoe UI", sans-serif;
+  }
+  body {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    min-height: 100vh;
+  }
+  @media (max-width: 1000px) {
+    body { grid-template-columns: 1fr; }
+  }
+  /* Popout mode (?popout=1): the whole point is testing true full-screen
+     size on a real window, not a boxed-in preview frame - no rail, no
+     frame border/aspect-ratio cap, no padding, the preview IS the page. */
+  body.popout {
+    grid-template-columns: 1fr;
+    height: 100vh;
+  }
+  body.popout .rail { display: none; }
+  body.popout .stage { padding: 0; height: 100vh; overflow: hidden; }
+  body.popout .frame { border: none; border-radius: 0; aspect-ratio: auto; min-height: 0; height: 100vh; }
+  .popout-back {
+    /* Bottom-left, not top - both layouts put real content (the Dense
+       sidebar's scoreboard heading, the Strip header) up near the top. */
+    position: fixed; bottom: 0.8rem; left: 0.8rem; z-index: 10;
+    background: rgba(20, 20, 26, 0.85); color: var(--ui-ink); border: 1px solid var(--ui-rule);
+    border-radius: 8px; padding: 0.4rem 0.8rem; font-size: 0.8rem; text-decoration: none; font-family: inherit;
+    opacity: 0.35; transition: opacity 0.15s ease;
+  }
+  .popout-back:hover { opacity: 1; }
+
+  /* ---------- Control rail ---------- */
+  .rail {
+    background: var(--ui-panel);
+    border-right: 1px solid var(--ui-rule);
+    padding: 1.6rem 1.5rem 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.6rem;
+  }
+  .rail h1 { font-size: 1.1rem; margin: 0 0 0.2rem; }
+  .rail .sub { color: var(--ui-ink-soft); font-size: 0.82rem; line-height: 1.5; margin: 0; }
+  .field { display: flex; flex-direction: column; gap: 0.6rem; }
+  .field label.title {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ui-ink-soft);
+  }
+  .layout-option {
+    display: flex; flex-direction: column; gap: 0.25rem; text-align: left;
+    background: #201f29; border: 1.5px solid var(--ui-rule); border-radius: 12px;
+    padding: 0.7rem 0.85rem; cursor: pointer; color: var(--ui-ink); font-family: inherit;
+  }
+  .layout-option.selected { border-color: var(--ui-accent); background: #232235; }
+  .layout-option strong { font-size: 0.9rem; }
+  .layout-option span { font-size: 0.76rem; color: var(--ui-ink-soft); line-height: 1.4; }
+  .seg { display: flex; border: 1.5px solid var(--ui-rule); border-radius: 10px; overflow: hidden; }
+  .seg button {
+    flex: 1; padding: 0.5rem 0.4rem; background: #201f29; border: none; color: var(--ui-ink-soft);
+    font-family: inherit; font-size: 0.82rem; cursor: pointer; border-right: 1px solid var(--ui-rule);
+  }
+  .seg button:last-child { border-right: none; }
+  .seg button.selected { background: var(--ui-accent); color: white; font-weight: 700; }
+  input[type="range"] { width: 100%; accent-color: var(--ui-accent); }
+  .rangeval { font-size: 0.8rem; color: var(--ui-ink-soft); display: flex; justify-content: space-between; }
+  .note { font-size: 0.76rem; color: var(--ui-ink-soft); line-height: 1.5; background: #201f29; border-radius: 10px; padding: 0.7rem 0.85rem; }
+
+  /* ---------- Preview stage ---------- */
+  .stage { padding: 1.6rem; overflow: auto; }
+  .frame {
+    border: 1px solid var(--ui-rule);
+    border-radius: 14px;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    min-height: 600px;
+  }
+
+  /* Theme tokens - matches the real app's live .page.role-table[data-table-theme] tokens exactly. */
+  .preview { --card-radius: 14px; --display-weight: 800; --card-black-transform: none; height: 100%; overflow: hidden; position: relative; font-family: -apple-system, sans-serif; }
+  .preview[data-theme="felt"] {
+    --bg: #101014; --paper: #f2f0ea; --accent: #4c6fff; --white-bg: #f5f4ee; --white-fg: #17161a;
+    --display-font: "Barlow Condensed", sans-serif;
+  }
+  .preview[data-theme="bulletin"] {
+    --bg: #0a0a0c; --paper: #f5f5f5; --accent: #ffb020; --white-bg: #eceae3; --white-fg: #0a0a0c;
+    --card-radius: 0px; --card-black-transform: uppercase; --display-font: "Big Shoulders Display", sans-serif;
+  }
+  .preview { background: var(--bg); color: var(--paper); }
+
+  .black-card {
+    background: var(--bg); color: var(--paper); border: 1px solid color-mix(in srgb, var(--paper) 20%, transparent);
+    border-radius: var(--card-radius); font-family: var(--display-font); font-weight: var(--display-weight);
+    text-transform: var(--card-black-transform); line-height: 1.15;
+    font-size: calc(1.15rem * var(--black-scale, 1));
+  }
+  .white-card {
+    background: var(--white-bg); color: var(--white-fg); border-radius: var(--card-radius);
+    display: flex; flex-direction: column; justify-content: center; gap: 0.35rem; text-align: left; font-weight: 600;
+    padding: 0.7rem; overflow: hidden;
+  }
+  .white-card.single { align-items: center; text-align: center; }
+  .lineup-line { display: flex; align-items: flex-start; gap: 0.4rem; margin: 0; }
+  .lineup-badge {
+    flex-shrink: 0; background: var(--accent); color: white;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; margin-top: 0.1rem;
+    width: 1.3em; height: 1.3em; font-size: 0.6em;
+  }
+  .status-pill {
+    font-family: var(--display-font); font-weight: 800; text-transform: var(--card-black-transform);
+    background: color-mix(in srgb, var(--accent) 22%, var(--bg)); color: var(--paper);
+    border-radius: 999px; padding: 0.3rem 0.9rem; font-size: 0.85rem; display: inline-block;
+  }
+
+  /* --- Layout A: Dense Grid --- */
+  .layout-dense { display: grid; grid-template-columns: 220px 1fr; height: 100%; }
+  .dense-sidebar { background: color-mix(in srgb, var(--bg) 85%, black); padding: 1.2rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; border-right: 1px solid color-mix(in srgb, var(--paper) 12%, transparent); overflow-y: auto; }
+  .dense-sidebar h3 { font-family: var(--display-font); text-transform: var(--card-black-transform); font-size: 0.8rem; letter-spacing: 0.08em; color: color-mix(in srgb, var(--paper) 55%, transparent); margin: 0 0 0.4rem; }
+  .dense-score-row { display: flex; justify-content: space-between; font-size: 0.92rem; padding: 0.35rem 0.5rem; border-radius: 8px; }
+  .dense-score-row.leader { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 700; }
+  .dense-main { display: flex; flex-direction: column; padding: 1rem 1.2rem; overflow: hidden; }
+  .dense-banner { padding: 0.9rem 1.2rem; margin-bottom: 0.6rem; flex-shrink: 0; }
+  .dense-status-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.7rem; flex-shrink: 0; }
+  /* Outer .fill-grid is a flex box occupying all available space - when the
+     inner grid is capped smaller than that space, centering it here is what
+     turns the leftover room into a border/margin instead of stretched
+     cards. Uncapped/scrolling modes just make the inner grid 100%. */
+  .fill-grid { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 0; }
+  .fill-grid.scrolling { align-items: flex-start; overflow-y: auto; }
+  .fill-grid-inner { display: grid; gap: 0.6rem; }
+
+  /* --- Layout B: Command Strip --- */
+  .layout-strip { display: flex; flex-direction: column; height: 100%; }
+  .strip-header { display: flex; align-items: center; justify-content: space-between; padding: 0.7rem 1.4rem; background: color-mix(in srgb, var(--bg) 85%, black); border-bottom: 1px solid color-mix(in srgb, var(--paper) 12%, transparent); flex-shrink: 0; gap: 1rem; flex-wrap: wrap; }
+  .strip-avatars { display: flex; gap: 0.35rem; }
+  .strip-avatar { width: 1.9rem; height: 1.9rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 800; background: color-mix(in srgb, var(--paper) 15%, transparent); color: color-mix(in srgb, var(--paper) 60%, transparent); }
+  .strip-avatar.done { background: var(--accent); color: white; }
+  .strip-body { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 1.4rem; overflow: hidden; min-height: 0; }
+  .strip-banner { padding: 1.1rem 1.8rem; text-align: center; max-width: 80%; margin-bottom: 1.1rem; flex-shrink: 0; }
+  .strip-body .fill-grid { width: 100%; }
+</style>
+</head>
+<body>
+  <div class="rail">
+    <div>
+      <h1>Table Layout Exploration</h1>
+      <p class="sub">Two layouts for the shared Table screen — not another color pass (Felt &amp; Ink / Bulletin are already decided and live), but the actual information architecture. (A third direction, a fanned "Distance Arc" hand, was tried and cut — same illegible-overlap problem that killed the original Parlour mockup, even on a real big-screen canvas.)</p>
+    </div>
+
+    <div class="field">
+      <label class="title">Layout</label>
+      <button class="layout-option selected" data-layout="dense">
+        <strong>A · Dense Grid</strong>
+        <span>Persistent sidebar scoreboard + pinned black-card banner + a submissions area that fills whatever space is left.</span>
+      </button>
+      <button class="layout-option" data-layout="strip">
+        <strong>B · Command Strip</strong>
+        <span>A persistent top strip showing round pacing — who's submitted, who hasn't — so the Table itself communicates status, not just the host's phone.</span>
+      </button>
+    </div>
+
+    <div class="field">
+      <label class="title">Theme</label>
+      <div class="seg">
+        <button class="selected" data-theme="felt">Felt &amp; Ink</button>
+        <button data-theme="bulletin">Bulletin</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="title">Black card size</label>
+      <input type="range" id="blackScaleSlider" min="0.7" max="2" step="0.05" value="1.15">
+      <div class="rangeval"><span>small</span><span id="blackScaleVal">1.15×</span><span>huge</span></div>
+    </div>
+
+    <div class="field">
+      <label class="title">Max card size</label>
+      <input type="range" id="maxSizeSlider" min="160" max="420" step="10" value="260">
+      <div class="rangeval"><span>tight</span><span id="maxSizeVal">260px</span><span>roomy</span></div>
+      <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; color:var(--ui-ink-soft); cursor:pointer;">
+        <input type="checkbox" id="unlimitedToggle" style="accent-color:var(--ui-accent);">
+        Unlimited (old fill-everything behavior)
+      </label>
+    </div>
+
+    <div class="field">
+      <label class="title">Players in this round</label>
+      <input type="range" id="playersSlider" min="3" max="20" value="6">
+      <div class="rangeval"><span>3</span><span id="playersVal">6 players</span><span>20</span></div>
+    </div>
+
+    <div class="field">
+      <label class="title">Black card pick count</label>
+      <div class="seg" id="pickSeg">
+        <button class="selected" data-pick="1">Pick 1</button>
+        <button data-pick="2">Pick 2</button>
+        <button data-pick="3">Pick 3</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="title">Submission progress (Layout B's status strip)</label>
+      <input type="range" id="submittedSlider" min="0" max="6" value="2">
+      <div class="rangeval"><span>0 submitted</span><span id="submittedVal">2 of 6</span><span>all in</span></div>
+    </div>
+
+    <div class="note">
+      The submissions grid sizes itself to the actual space available: it searches column counts and picks whichever gives the biggest cards that still fit. "Max card size" caps how big that's allowed to get, so a low player count leaves real margin around normal-sized cards instead of stretching them into oversized boxes — check "Unlimited" to compare against the old fill-everything behavior. There's also a legibility floor going the other way (cards won't shrink past ~90px tall); past that it scrolls instead, same as the real app's judging grid already does.
+    </div>
+
+    <button type="button" id="popoutBtn" class="layout-option" style="text-align:center; cursor:pointer;">
+      <strong>⧉ Open in a real window</strong>
+      <span>Pops the current settings out into a full browser window/tab, sized closer to an actual TV, instead of the boxed-in preview frame here.</span>
+    </button>
+  </div>
+
+  <div class="stage">
+    <div class="frame">
+      <div class="preview" id="preview" data-theme="felt"></div>
+    </div>
+  </div>
+
+<script>
+  const CARD_POOL = [
+    "A really cool hat.", "Puberty.", "Mutually assured destruction.", "Hobos.", "The Force.",
+    "Birth control.", "A tiny horse.", "Racially motivated arson.", "An unstoppable wave of gentrification.",
+    "The inevitable heat death of the universe.", "A soul-crushing case of the Mondays.", "Vigorous jazz hands.",
+    "Sweet, sweet vengeance.", "The Illuminati.", "An avalanche of student loan debt.", "A rogue Roomba.",
+    "Full-body glitter.", "The last slice of pizza.", "An awkward silence.", "A well-timed sneeze.",
+  ];
+  const PLAYER_NAMES = ["Alex", "Sam", "Jordan", "Casey", "Riley", "Morgan", "Taylor", "Jamie", "Drew", "Quinn",
+    "Avery", "Rowan", "Kai", "Blair", "Finley", "Skyler", "Emerson", "Reese", "Sage", "Dakota"];
+  const BLACK_CARDS = {
+    1: "In the wake of the zombie apocalypse, our best weapon against the undead hordes is _.",
+    2: "_ + _ = _.",
+    3: "_ will happen when the clock strikes midnight. _, _, _.",
+  };
+
+  const DEFAULTS = { layout: "dense", theme: "felt", players: 6, pick: 1, submitted: 2, blackScale: 1.15, maxSize: 260, unlimited: false };
+
+  // Read any settings carried over via URL (from the popout button, or a
+  // shared link) so the popped-out window opens already matching what was
+  // being looked at, rather than resetting to defaults.
+  function stateFromURL() {
+    const p = new URLSearchParams(location.search);
+    const s = { ...DEFAULTS };
+    if (p.has("layout")) s.layout = p.get("layout");
+    if (p.has("theme")) s.theme = p.get("theme");
+    if (p.has("players")) s.players = Number(p.get("players"));
+    if (p.has("pick")) s.pick = Number(p.get("pick"));
+    if (p.has("submitted")) s.submitted = Number(p.get("submitted"));
+    if (p.has("blackScale")) s.blackScale = Number(p.get("blackScale"));
+    if (p.has("maxSize")) s.maxSize = Number(p.get("maxSize"));
+    if (p.has("unlimited")) s.unlimited = p.get("unlimited") === "1";
+    return s;
+  }
+  function paramsFromState() {
+    const p = new URLSearchParams();
+    p.set("layout", state.layout);
+    p.set("theme", state.theme);
+    p.set("players", state.players);
+    p.set("pick", state.pick);
+    p.set("submitted", state.submitted);
+    p.set("blackScale", state.blackScale);
+    p.set("maxSize", state.maxSize);
+    p.set("unlimited", state.unlimited ? "1" : "0");
+    return p;
+  }
+
+  const isPopout = new URLSearchParams(location.search).get("popout") === "1";
+  let state = stateFromURL();
+  if (isPopout) {
+    document.body.classList.add("popout");
+    const back = document.createElement("a");
+    back.href = "table-layouts.html?" + paramsFromState().toString();
+    back.className = "popout-back";
+    back.textContent = "← Back to controls";
+    document.body.appendChild(back);
+  }
+
+  const preview = document.getElementById("preview");
+  const playersSlider = document.getElementById("playersSlider");
+  const playersVal = document.getElementById("playersVal");
+  const submittedSlider = document.getElementById("submittedSlider");
+  const submittedVal = document.getElementById("submittedVal");
+  const blackScaleSlider = document.getElementById("blackScaleSlider");
+  const blackScaleVal = document.getElementById("blackScaleVal");
+  const maxSizeSlider = document.getElementById("maxSizeSlider");
+  const maxSizeVal = document.getElementById("maxSizeVal");
+  const unlimitedToggle = document.getElementById("unlimitedToggle");
+
+  document.querySelectorAll(".layout-option[data-layout]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.layout = btn.dataset.layout;
+      document.querySelectorAll(".layout-option[data-layout]").forEach((b) => b.classList.toggle("selected", b === btn));
+      render();
+    });
+  });
+  document.querySelectorAll(".seg button[data-theme]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.theme = btn.dataset.theme;
+      document.querySelectorAll(".seg button[data-theme]").forEach((b) => b.classList.toggle("selected", b === btn));
+      render();
+    });
+  });
+  document.querySelectorAll("#pickSeg button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.pick = Number(btn.dataset.pick);
+      document.querySelectorAll("#pickSeg button").forEach((b) => b.classList.toggle("selected", b === btn));
+      render();
+    });
+  });
+  playersSlider.addEventListener("input", () => {
+    state.players = Number(playersSlider.value);
+    submittedSlider.max = state.players;
+    if (state.submitted > state.players) { state.submitted = state.players; submittedSlider.value = state.players; }
+    render();
+  });
+  submittedSlider.addEventListener("input", () => {
+    state.submitted = Number(submittedSlider.value);
+    render();
+  });
+  blackScaleSlider.addEventListener("input", () => {
+    state.blackScale = Number(blackScaleSlider.value);
+    render();
+  });
+  maxSizeSlider.addEventListener("input", () => {
+    state.maxSize = Number(maxSizeSlider.value);
+    render();
+  });
+  unlimitedToggle.addEventListener("change", () => {
+    state.unlimited = unlimitedToggle.checked;
+    maxSizeSlider.disabled = state.unlimited;
+    render();
+  });
+  window.addEventListener("resize", () => render());
+
+  function lineup(pick, seed) {
+    const cards = [];
+    for (let i = 0; i < pick; i++) cards.push(CARD_POOL[(seed + i) % CARD_POOL.length]);
+    return cards;
+  }
+
+  function whiteCardHTML(pick, seed) {
+    const cards = lineup(pick, seed);
+    if (cards.length === 1) return `<div class="white-card single"><span>${cards[0]}</span></div>`;
+    const lines = cards.map((c, i) => `<p class="lineup-line"><span class="lineup-badge">${i + 1}</span><span>${c}</span></p>`).join("");
+    return `<div class="white-card">${lines}</div>`;
+  }
+
+  // Searches column counts and picks whichever produces the LARGEST card
+  // area that still fits the container - so fewer submissions genuinely
+  // get bigger, easier-to-read cards, and more submissions pack in tighter
+  // but stay proportional, rather than every count sharing one fixed size.
+  // Below a legibility floor it stops shrinking and lets the grid scroll
+  // instead (same fallback the real judging grid already has).
+  const MIN_CARD_W = 100;
+  const MIN_CARD_H = 90;
+  const GAP = 10;
+
+  // maxCardW/maxCardH cap how big a single card is allowed to get, so a low
+  // player count leaves genuine margin around a normal-sized card cluster
+  // instead of stretching cards into oversized rectangles just because the
+  // room is there. Pass Infinity for either to disable that cap (the old
+  // fill-everything behavior).
+  function computeFit(containerW, containerH, n, maxCardW, maxCardH) {
+    if (n <= 0) return { cols: 1, rows: 1, cardW: containerW, cardH: containerH, capped: false };
+    let best = null;
+    const maxCols = Math.max(1, Math.min(n, 8));
+    for (let cols = 1; cols <= maxCols; cols++) {
+      const rows = Math.ceil(n / cols);
+      const rawW = (containerW - GAP * (cols - 1)) / cols;
+      const rawH = (containerH - GAP * (rows - 1)) / rows;
+      if (rawW <= 0 || rawH <= 0) continue;
+      const cardW = Math.min(rawW, maxCardW);
+      const cardH = Math.min(rawH, maxCardH);
+      const area = cardW * cardH;
+      if (!best || area > best.area) best = { cols, rows, cardW, cardH, area };
+    }
+    if (!best) best = { cols: 1, rows: n, cardW: Math.min(containerW, maxCardW), cardH: Math.min(containerH / n, maxCardH) };
+    best.capped = best.cardW * best.cols + GAP * (best.cols - 1) < containerW - 1
+      || best.cardH * best.rows + GAP * (best.rows - 1) < containerH - 1;
+    return best;
+  }
+
+  function fillGrid(containerEl, n, pick, seedStart, maxCardW, maxCardH) {
+    const rect = containerEl.getBoundingClientRect();
+    const fit = computeFit(rect.width, rect.height, n, maxCardW, maxCardH);
+    // A pick-2/3 card needs real room for multiple badge+text lines, not
+    // just a single line - the "is this too small" floor has to scale with
+    // pick count too, or a fit that's technically "big enough" for a single
+    // line ends up clipping a 3-line lineup instead of falling back to
+    // scroll mode where it belongs.
+    const minCardHForPick = MIN_CARD_H + (pick - 1) * 34;
+    const scrolling = fit.cardW < MIN_CARD_W || fit.cardH < minCardHForPick;
+
+    let cardW, cardH;
+    if (scrolling) {
+      // Fall back to a fixed legible minimum and let the grid scroll -
+      // same behavior as the real app past its own crowding point.
+      containerEl.className = "fill-grid scrolling";
+      containerEl.innerHTML = `<div class="fill-grid-inner" style="width:100%; grid-template-columns:repeat(auto-fill, minmax(${MIN_CARD_W}px, 1fr)); grid-auto-rows:minmax(${minCardHForPick}px, auto);"></div>`;
+      cardW = MIN_CARD_W;
+      cardH = minCardHForPick;
+    } else if (fit.capped) {
+      // Capped below what the container could technically fill - size the
+      // grid to exactly what the (capped) cards need and let the flex
+      // parent center it, so the leftover room reads as a border/margin
+      // around a normal-sized card cluster instead of stretching cards.
+      containerEl.className = "fill-grid capped";
+      const gridW = fit.cols * fit.cardW + GAP * (fit.cols - 1);
+      const gridH = fit.rows * fit.cardH + GAP * (fit.rows - 1);
+      containerEl.innerHTML = `<div class="fill-grid-inner" style="width:${gridW}px; height:${gridH}px; grid-template-columns:repeat(${fit.cols}, 1fr); grid-template-rows:repeat(${fit.rows}, 1fr);"></div>`;
+      cardW = fit.cardW;
+      cardH = fit.cardH;
+    } else {
+      containerEl.className = "fill-grid";
+      containerEl.innerHTML = `<div class="fill-grid-inner" style="width:100%; height:100%; grid-template-columns:repeat(${fit.cols}, 1fr); grid-template-rows:repeat(${fit.rows}, 1fr);"></div>`;
+      cardW = fit.cardW;
+      cardH = fit.cardH;
+    }
+
+    // Card font size scales with the actual card size achieved, not just
+    // player count - a fixed small font would waste the extra room a
+    // low-player-count round earns itself. Accounts for fixed per-card
+    // padding/gap overhead (roughly 1.4rem padding + a gap per extra line)
+    // so the estimate isn't just dividing raw height by line count.
+    const overheadPx = 22 + (pick - 1) * 8;
+    const perLinePx = Math.max(10, (cardH - overheadPx) / pick);
+    const fontPx = Math.max(10, Math.min(26, Math.min(cardW / 9, perLinePx / 1.7)));
+    const inner = containerEl.querySelector(".fill-grid-inner");
+    inner.style.fontSize = fontPx + "px";
+    inner.innerHTML = Array.from({ length: n }, (_, i) => whiteCardHTML(pick, (seedStart + i) * pick)).join("");
+  }
+
+  function renderDense() {
+    const rows = Array.from({ length: state.players }, (_, i) => {
+      const score = Math.max(0, 5 - Math.floor(i / 2) + (i % 3));
+      return { name: PLAYER_NAMES[i % PLAYER_NAMES.length], score };
+    }).sort((a, b) => b.score - a.score);
+    const topScore = rows[0]?.score ?? 0;
+
+    return `
+      <div class="layout-dense">
+        <div class="dense-sidebar">
+          <h3>Scoreboard</h3>
+          ${rows.map((r) => `<div class="dense-score-row ${r.score === topScore ? "leader" : ""}"><span>${r.name}</span><span>${r.score}</span></div>`).join("")}
+        </div>
+        <div class="dense-main">
+          <div class="black-card dense-banner">${BLACK_CARDS[state.pick]}</div>
+          <div class="dense-status-row">
+            <span class="status-pill">${state.submitted} of ${state.players} submitted</span>
+          </div>
+          <div class="fill-grid" id="fillTarget"></div>
+        </div>
+      </div>`;
+  }
+
+  function renderStrip() {
+    const avatars = Array.from({ length: state.players }, (_, i) => {
+      const done = i < state.submitted;
+      const initial = PLAYER_NAMES[i % PLAYER_NAMES.length][0];
+      return `<div class="strip-avatar ${done ? "done" : ""}" title="${PLAYER_NAMES[i % PLAYER_NAMES.length]}">${initial}</div>`;
+    }).join("");
+    return `
+      <div class="layout-strip">
+        <div class="strip-header">
+          <span class="status-pill">${state.submitted} of ${state.players} submitted</span>
+          <div class="strip-avatars">${avatars}</div>
+        </div>
+        <div class="strip-body">
+          <div class="black-card strip-banner">${BLACK_CARDS[state.pick]}</div>
+          <div class="fill-grid" id="fillTarget"></div>
+        </div>
+      </div>`;
+  }
+
+  const MAX_CARD_ASPECT = 1.3; // width:height target for the capped max size
+
+  function render() {
+    preview.dataset.theme = state.theme;
+    preview.style.setProperty("--black-scale", state.blackScale);
+    playersVal.textContent = `${state.players} players`;
+    submittedVal.textContent = `${state.submitted} of ${state.players}`;
+    blackScaleVal.textContent = `${state.blackScale.toFixed(2)}×`;
+    maxSizeVal.textContent = state.unlimited ? "unlimited" : `${state.maxSize}px`;
+
+    preview.innerHTML = state.layout === "dense" ? renderDense() : renderStrip();
+
+    const target = document.getElementById("fillTarget");
+    const n = state.layout === "dense" ? state.players : Math.max(state.submitted, 1);
+    const maxCardW = state.unlimited ? Infinity : state.maxSize;
+    const maxCardH = state.unlimited ? Infinity : state.maxSize / MAX_CARD_ASPECT;
+    // Two rAFs: one lets the just-inserted grid container get its real
+    // layout box before measuring, the other lets that measurement settle
+    // before we size cards off of it (avoids a stale 0x0 read on first paint).
+    requestAnimationFrame(() => requestAnimationFrame(() => fillGrid(target, n, state.pick, 0, maxCardW, maxCardH)));
+  }
+
+  // Make the rail's controls reflect whatever state we actually loaded
+  // with (URL params or defaults) - matters when a popout link carries
+  // over non-default settings.
+  function syncControls() {
+    document.querySelectorAll(".layout-option[data-layout]").forEach((b) => b.classList.toggle("selected", b.dataset.layout === state.layout));
+    document.querySelectorAll(".seg button[data-theme]").forEach((b) => b.classList.toggle("selected", b.dataset.theme === state.theme));
+    document.querySelectorAll("#pickSeg button").forEach((b) => b.classList.toggle("selected", Number(b.dataset.pick) === state.pick));
+    playersSlider.value = state.players;
+    submittedSlider.max = state.players;
+    submittedSlider.value = state.submitted;
+    blackScaleSlider.value = state.blackScale;
+    maxSizeSlider.value = state.maxSize;
+    maxSizeSlider.disabled = state.unlimited;
+    unlimitedToggle.checked = state.unlimited;
+  }
+  syncControls();
+
+  const popoutBtn = document.getElementById("popoutBtn");
+  if (popoutBtn) {
+    popoutBtn.addEventListener("click", () => {
+      const params = paramsFromState();
+      params.set("popout", "1");
+      window.open("table-layouts.html?" + params.toString(), "_blank");
+    });
+  }
+
+  render();
+</script>
+</body>
+</html>

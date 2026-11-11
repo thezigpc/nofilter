@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Table Mockup — Felt &amp; Ink</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --stage: #101014;
+    --stage-2: #17161d;
+    --card-black-bg: #1b1a21;
+    --card-black-fg: #f2f0ea;
+    --card-black-sub: #918f9c;
+    --card-white-bg: #f5f4ee;
+    --card-white-fg: #17161a;
+    --card-white-sub: #6a6860;
+    --accent: #4c6fff;
+    --accent-soft: rgba(76, 111, 255, 0.16);
+    --ink: #f2f0ea;
+    --ink-soft: #8d8b96;
+    --gold: #e0ab5c;
+    --rule: #29282f;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--stage);
+    color: var(--ink);
+    font-family: "Barlow", -apple-system, sans-serif;
+    overflow-x: hidden;
+  }
+  body {
+    background:
+      radial-gradient(ellipse 90% 70% at 50% -10%, rgba(76,111,255,0.10), transparent 60%),
+      radial-gradient(ellipse 140% 100% at 50% 110%, rgba(0,0,0,0.55), transparent 55%),
+      var(--stage);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(1.2rem, 2.2vw, 2.5rem) clamp(1.5rem, 4vw, 4rem);
+  }
+  .display { font-family: "Barlow Condensed", sans-serif; }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: clamp(1.2rem, 2.5vw, 2.2rem);
+  }
+  .room-tag {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+  }
+  .room-code {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 900;
+    font-size: clamp(1.6rem, 2.6vw, 2.4rem);
+    letter-spacing: 0.04em;
+  }
+  .table-pill {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+  }
+  .phase-pill {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: clamp(0.9rem, 1.3vw, 1.1rem);
+    background: var(--accent-soft);
+    color: #b6c4ff;
+    padding: 0.5rem 1.2rem;
+    border-radius: 999px;
+  }
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(1.6rem, 3vw, 2.6rem);
+  }
+
+  .black-card {
+    width: 100%;
+    max-width: 1400px;
+    background: var(--card-black-bg);
+    border: 1px solid #2c2b34;
+    border-radius: 20px;
+    padding: clamp(1.6rem, 3vw, 2.8rem) clamp(2rem, 4vw, 3.6rem);
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
+    position: relative;
+  }
+  .black-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(76,111,255,0.35), transparent 40%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .black-card .kicker {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-size: clamp(0.75rem, 1vw, 0.95rem);
+    color: var(--card-black-sub);
+    margin: 0 0 0.6rem;
+  }
+  .black-card p {
+    margin: 0;
+    font-weight: 700;
+    line-height: 1.18;
+    text-wrap: balance;
+    font-size: clamp(2.2rem, 4.4vw, 4.2rem);
+  }
+
+  .shuffle-row {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+  }
+  .shuffle-btn {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: clamp(1rem, 1.4vw, 1.3rem);
+    color: white;
+    background: linear-gradient(135deg, #5b7dff, #3d59e0);
+    border: none;
+    border-radius: 14px;
+    padding: 0.85rem 2.2rem;
+    box-shadow: 0 14px 30px -10px rgba(76,111,255,0.55);
+  }
+  .hint {
+    color: var(--ink-soft);
+    font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+  }
+
+  .hand {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: clamp(1rem, 1.6vw, 1.6rem);
+    width: 100%;
+    max-width: 1400px;
+  }
+  .slot {
+    aspect-ratio: 5 / 6;
+    border-radius: 16px;
+    position: relative;
+    transition: transform 0.15s ease;
+  }
+  .slot.back {
+    background: linear-gradient(150deg, #2a3a8f, #14152a 75%);
+    border: 1px solid #33409e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .slot.back::after {
+    content: "?";
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 900;
+    font-size: clamp(2.4rem, 4vw, 3.6rem);
+    color: rgba(255,255,255,0.28);
+  }
+  .slot.front {
+    background: var(--card-white-bg);
+    color: var(--card-white-fg);
+    padding: clamp(1rem, 1.6vw, 1.5rem);
+    display: flex;
+    align-items: flex-start;
+    box-shadow: 0 20px 40px -18px rgba(0,0,0,0.5);
+    transform: translateY(-6px);
+  }
+  .slot.front p {
+    margin: 0;
+    font-weight: 600;
+    line-height: 1.28;
+    font-size: clamp(1.05rem, 1.5vw, 1.35rem);
+  }
+  .slot.front.winner {
+    outline: 3px solid var(--gold);
+    outline-offset: 3px;
+  }
+  .crown {
+    position: absolute;
+    top: -14px;
+    right: -10px;
+    font-size: clamp(1.4rem, 2vw, 1.8rem);
+  }
+
+  footer {
+    margin-top: clamp(1.6rem, 3vw, 2.4rem);
+    display: flex;
+    align-items: center;
+    gap: clamp(1.4rem, 2.4vw, 2.2rem);
+    flex-wrap: wrap;
+    border-top: 1px solid var(--rule);
+    padding-top: clamp(1rem, 1.6vw, 1.4rem);
+  }
+  .score-chip {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: clamp(1rem, 1.3vw, 1.2rem);
+  }
+  .score-chip .name { font-weight: 600; }
+  .score-chip .num {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 800;
+    color: var(--gold);
+    font-size: 1.2em;
+  }
+  .score-chip.czar .name::before {
+    content: "♛ ";
+    color: var(--gold);
+  }
+
+  .concept-note {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(6px);
+    color: #cfcdd8;
+    font-family: -apple-system, sans-serif;
+    font-size: 0.78rem;
+    text-align: center;
+    padding: 0.5rem;
+    border-top: 1px solid var(--rule);
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="room-tag">
+      <span class="room-code">S5XFU</span>
+      <span class="table-pill">Table</span>
+    </div>
+    <span class="phase-pill">Judging</span>
+  </header>
+
+  <main>
+    <div class="black-card">
+      <p class="kicker">Round 4</p>
+      <p>My anti-drug is <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>.</p>
+    </div>
+
+    <div class="shuffle-row">
+      <button class="shuffle-btn">🔀 Shuffle</button>
+      <span class="hint">Tap a face-down card to reveal it</span>
+    </div>
+
+    <div class="hand">
+      <div class="slot front winner">
+        <span class="crown">👑</span>
+        <p>A really cool hat.</p>
+      </div>
+      <div class="slot front">
+        <p>Puberty.</p>
+      </div>
+      <div class="slot back"></div>
+      <div class="slot front">
+        <p>Mutually assured destruction.</p>
+      </div>
+      <div class="slot back"></div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="score-chip czar"><span class="name">Marcus</span><span class="num">3</span></div>
+    <div class="score-chip"><span class="name">Priya</span><span class="num">4</span></div>
+    <div class="score-chip"><span class="name">Jonah</span><span class="num">1</span></div>
+    <div class="score-chip"><span class="name">Dee</span><span class="num">2</span></div>
+  </footer>
+
+  <div class="concept-note">Mockup 1 of 3 — “Felt &amp; Ink”: evolves the current app's dark/blue palette for landscape TV, fanned cards, condensed display type</div>
+</body>
+</html>

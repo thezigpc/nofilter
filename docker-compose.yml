@@ -1,0 +1,47 @@
+# Deploy with: docker compose up -d --build
+#
+# One port now - room management moved from a separate, non-tunneled
+# Express app into the main app's /admin route, gated by the same admin
+# login as the card library (see server/src/socket/index.ts's "admin*"
+# events). Published to 127.0.0.1 only, not 0.0.0.0 - ufw already blocks
+# outside access (see the VM's firewall setup), but binding to loopback is
+# defense in depth. The Cloudflare Tunnel reaches the app by proxying to
+# 127.0.0.1:3001 from the same host, same as the Windows deployment does
+# today.
+services:
+  app:
+    build: .
+    container_name: cah-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    environment:
+      PORT: "3001"
+      # Bind-mounted below, so these survive `docker compose up --build`
+      # recreating the container - only the image's code changes on a
+      # rebuild, never this data.
+      TABLE_STYLE_PRESETS_PATH: /data/table-style-presets.json
+      CUSTOM_CARDS_PATH: /data/custom-cards.json
+      CUSTOM_SETS_PATH: /data/custom-sets.json
+      PACK_SELECTION_PRESETS_PATH: /data/pack-selection-presets.json
+      GAME_SETUP_PRESETS_PATH: /data/game-setup-presets.json
+      ADMIN_PASSWORD_HASH_PATH: /data/admin-password.json
+      CORE_SET_PATH: /data/core-set.json
+      GAME_NAME_PATH: /data/game-name.json
+      DEFAULT_THEME_PATH: /data/default-theme.json
+      # No longer required - leaving ADMIN_PASSWORD unset in .env is what
+      # lets the first-run setup wizard engage (server/src/admin/auth.ts).
+      # An operator who wants the old env-var-only behavior can still set it.
+      # Deliberately not setting CARD_DATA_PATH either: unset falls through
+      # to an uploaded Core Set, or the bundled sample-cards.json on a fresh
+      # deploy - see server/src/cards/coreSet.ts.
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-}"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3

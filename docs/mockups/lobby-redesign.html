@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lobby redesign — proposal</title>
+<style>
+  :root {
+    --bg: #17171b;
+    --paper: #f0efe6;
+    --accent: #35c2c1;
+    --panel: #1e1e24;
+    --line: rgba(240, 239, 230, 0.12);
+    --muted: rgba(240, 239, 230, 0.62);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--paper);
+    line-height: 1.5;
+  }
+
+  /* ---------- page chrome ---------- */
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  header.intro { border-bottom: 1px solid var(--line); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  h1 { font-size: 1.6rem; margin: 0 0 .4rem; }
+  .sub { color: var(--muted); margin: 0; max-width: 62ch; }
+
+  .stats { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1.25rem 0 0; padding: 0; list-style: none; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: .6rem .85rem; }
+  .stat b { display: block; font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .stat.good b { color: var(--accent); }
+
+  /* ---------- side by side phones ---------- */
+  .compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 2rem; align-items: start; }
+  .side > h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 .15rem; }
+  .side > .note { color: var(--muted); font-size: .85rem; margin: 0 0 .9rem; }
+
+  .phone {
+    width: 100%; max-width: 380px; height: 620px; overflow-y: auto; overflow-x: hidden;
+    background: var(--bg); border: 8px solid #000; border-radius: 26px;
+    padding: .85rem; box-shadow: 0 10px 34px rgba(0,0,0,.5);
+    scrollbar-width: thin;
+  }
+  .phone::-webkit-scrollbar { width: 6px; }
+  .phone::-webkit-scrollbar-thumb { background: rgba(240,239,230,.2); border-radius: 3px; }
+
+  .room-code { font-weight: 800; letter-spacing: .1em; font-size: .95rem; }
+  .roomhead { display: flex; justify-content: space-between; align-items: center; margin-bottom: .8rem; }
+  .badge { font-size: .62rem; text-transform: uppercase; letter-spacing: .05em; background: rgba(53,194,193,.16); color: var(--accent); padding: .18rem .45rem; border-radius: 4px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: .85rem; margin-bottom: .7rem; }
+  .panel h3 { margin: 0 0 .5rem; font-size: .95rem; }
+  .muted { color: var(--muted); font-size: .8rem; }
+
+  .row { display: flex; align-items: center; gap: .5rem; }
+  .between { justify-content: space-between; }
+
+  .toggle { display: flex; align-items: center; gap: .5rem; padding: .3rem 0; font-size: .85rem; }
+  .toggle input { accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
+  .toggle .hint { color: var(--muted); font-size: .74rem; }
+  .slider { display: flex; align-items: center; gap: .5rem; padding: .3rem 0; font-size: .82rem; }
+  .slider input[type=range] { accent-color: var(--accent); flex: 1; min-width: 0; }
+
+  button { font: inherit; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: 7px; padding: .42rem .7rem; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  .primary { background: var(--accent); color: #10100f; border-color: var(--accent); font-weight: 700; width: 100%; padding: .7rem; }
+  .link { border: none; padding: 0; color: var(--accent); text-decoration: underline; }
+
+  /* ---------- accordion (the proposal) ---------- */
+  .acc { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-bottom: .7rem; overflow: hidden; }
+  .acc > summary {
+    list-style: none; cursor: pointer; padding: .8rem .85rem;
+    display: flex; align-items: center; gap: .6rem;
+  }
+  .acc > summary::-webkit-details-marker { display: none; }
+  .acc > summary .chev { color: var(--muted); transition: transform .15s ease; flex: none; }
+  .acc[open] > summary .chev { transform: rotate(90deg); }
+  .acc > summary .title { font-weight: 700; font-size: .95rem; }
+  .acc > summary .summary { color: var(--muted); font-size: .78rem; margin-left: auto; text-align: right; }
+  .acc .body { padding: 0 .85rem .85rem; border-top: 1px solid var(--line); padding-top: .7rem; }
+
+  .group-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: .8rem 0 .25rem; }
+  .group-label:first-child { margin-top: 0; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: .32rem .7rem; font-size: .78rem; cursor: pointer; }
+  .chip.on { background: var(--accent); color: #10100f; border-color: var(--accent); font-weight: 700; }
+
+  .stylerow { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+  .swatch { width: 15px; height: 15px; border-radius: 4px; background: var(--accent); display: inline-block; vertical-align: -2px; }
+
+  .changed { background: rgba(53,194,193,.08); border: 1px solid rgba(53,194,193,.35); border-radius: 8px; padding: .6rem .7rem; margin-bottom: .7rem; font-size: .8rem; }
+  .changed b { display: block; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); margin-bottom: .25rem; }
+
+  .tall-marker { text-align: center; color: var(--muted); font-size: .72rem; padding: .5rem 0; border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); margin: .6rem 0; }
+
+  /* ---------- annotations ---------- */
+  .legend { margin-top: 2.5rem; border-top: 1px solid var(--line); padding-top: 1.5rem; }
+  .legend h2 { font-size: 1.05rem; margin: 0 0 .8rem; }
+  .legend ol { margin: 0; padding-left: 1.1rem; }
+  .legend li { margin-bottom: .7rem; max-width: 78ch; }
+  .legend .tag { display: inline-block; font-size: .66rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: .1rem .4rem; border-radius: 4px; background: rgba(53,194,193,.16); color: var(--accent); margin-right: .4rem; vertical-align: 1px; }
+  .legend .tag.opt { background: rgba(240,239,230,.1); color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="intro">
+  <h1>Lobby settings — cleanup proposal</h1>
+  <p class="sub">
+    Both panes are scrollable and behave like the real thing. The left is today's Lobby; the right is the proposal.
+    Measurements are from the live app at 420&nbsp;px wide.
+  </p>
+  <ul class="stats">
+    <li class="stat"><b>4,797px</b><span>today · 5.3 screens</span></li>
+    <li class="stat"><b>6,023px</b><span>today · all rules on</span></li>
+    <li class="stat good"><b>~900px</b><span>proposed · ~1 screen</span></li>
+    <li class="stat good"><b>visible</b><span>proposed · Start Game</span></li>
+  </ul>
+</header>
+
+<div class="compare">
+
+  <!-- ======================= BEFORE ======================= -->
+  <section class="side">
+    <h2>Today</h2>
+    <p class="note">Four panels, all expanded, always. Start Game is at the very bottom — line 797 of 805.</p>
+    <div class="phone">
+      <div class="roomhead"><span class="room-code">QK4T9</span><span class="badge">lobby</span></div>
+
+      <div class="panel">
+        <h3>Players</h3>
+        <div class="row between"><span>Alice <span class="muted">(host)</span></span><button>Make host</button></div>
+        <div class="row between"><span>Bob</span><button>Kick</button></div>
+        <div class="row between"><span>Carol</span><button>Kick</button></div>
+      </div>
+
+      <div class="panel">
+        <h3>House Rules</h3>
+        <label class="toggle"><input type="checkbox"><span>Rando Cardrissian <span class="hint">— a virtual player submits a random card</span></span></label>
+        <label class="toggle"><input type="checkbox"><span>Double Down <span class="hint">— wager a won black card on a second entry</span></span></label>
+        <label class="toggle"><input type="checkbox"><span>Trade-In <span class="hint">— spend a black card to swap cards</span></span></label>
+        <label class="toggle"><input type="checkbox"><span>Hand Refresh <span class="hint">— once per game, redraw your hand</span></span></label>
+        <label class="toggle"><input type="checkbox"><span>No Scorekeeping <span class="hint">— hides the scoreboard</span></span></label>
+        <label class="toggle"><input type="checkbox"><span>Custom Prompts <span class="hint">— the Czar writes the black card</span></span></label>
+        <label class="toggle"><input type="checkbox"><span>Crowd Favorite <span class="hint">— everyone votes, no Czar</span></span></label>
+        <label class="toggle"><input type="checkbox" checked><span>Auto Draw <span class="hint">— refill your hand automatically</span></span></label>
+        <label class="toggle"><input type="checkbox" checked><span>Catch Up New Players <span class="hint">— mid-game joiners get black cards</span></span></label>
+        <label class="toggle"><input type="checkbox"><span>Personal Cards <span class="hint">— write your own white cards first</span></span></label>
+        <label class="toggle"><input type="checkbox"><span>Pick Bonus <span class="hint">— an extra card on pick-2+ rounds</span></span></label>
+        <label class="toggle"><input type="checkbox"><span>Single Answer Cards Only <span class="hint">— pick-1 prompts only</span></span></label>
+        <label class="toggle"><input type="checkbox"><span>Action Cards <span class="hint">— special-effect cards in the deck</span></span></label>
+        <div class="slider"><span>Win at</span><input type="range" value="7" min="1" max="15"><span class="muted">7 black cards</span></div>
+        <div class="row" style="gap:.4rem;margin:.4rem 0">
+          <button style="font-size:.75rem">First to N</button><button style="font-size:.75rem">Fixed rounds</button>
+        </div>
+        <div class="slider"><span>Hand size</span><input type="range" value="10" min="4" max="20"><span class="muted">10</span></div>
+        <div class="slider"><span>Double Down window</span><input type="range" value="7" min="0" max="10"><span class="muted">7s</span></div>
+        <p class="muted">…plus density, tiers and personal-card sliders as rules get switched on.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Shared Screen Style</h3>
+        <p class="muted">Theme</p>
+        <div class="row" style="gap:.4rem"><button>Felt &amp; Ink</button><button style="border-color:var(--accent)">Bulletin</button></div>
+        <p class="muted" style="margin-top:.6rem">Accent</p>
+        <div class="row" style="gap:.4rem">
+          <span class="swatch"></span><span class="swatch" style="background:#4d8dff"></span>
+          <span class="swatch" style="background:#ffb020"></span><span class="swatch" style="background:#e0708a"></span>
+        </div>
+        <label class="toggle" style="margin-top:.5rem"><input type="checkbox" checked><span>Spotlight cards on reveal</span></label>
+        <div class="slider"><span>Text size</span><input type="range" value="60"><span class="muted">1.35×</span></div>
+        <div class="slider"><span>Black card text</span><input type="range" value="70"><span class="muted">2.00×</span></div>
+        <div class="slider"><span>Spotlight size</span><input type="range" value="40"><span class="muted">1.00×</span></div>
+        <div class="slider"><span>Scoreboard text</span><input type="range" value="40"><span class="muted">1.00×</span></div>
+        <label class="toggle"><input type="checkbox"><span>Unlimited card size</span></label>
+        <div class="slider"><span>Max card size</span><input type="range" value="55"><span class="muted">330px</span></div>
+        <p class="muted">Layout</p>
+        <div class="row" style="gap:.4rem"><button>A · Dense Grid</button><button style="border-color:var(--accent)">B · Command Strip</button></div>
+        <div class="row" style="gap:.4rem;margin-top:.5rem"><button>Save as preset</button></div>
+        <div class="tall-marker">⋯ and the saved-preset list ⋯</div>
+      </div>
+
+      <div class="panel">
+        <h3>Packs</h3>
+        <div class="row" style="gap:.4rem;flex-wrap:wrap">
+          <button style="font-size:.75rem">Official only</button><button style="font-size:.75rem">Select all</button><button style="font-size:.75rem">None</button>
+        </div>
+        <p class="muted" style="margin-top:.5rem">427 packs · 19,604 white · 3,941 black</p>
+        <label class="toggle"><input type="checkbox" checked><span>CAH Base Set</span></label>
+        <label class="toggle"><input type="checkbox" checked><span>Red Box Expansion</span></label>
+        <label class="toggle"><input type="checkbox" checked><span>Blue Box Expansion</span></label>
+        <label class="toggle"><input type="checkbox"><span>Green Box Expansion</span></label>
+        <label class="toggle"><input type="checkbox"><span>The 90s Nostalgia Pack</span></label>
+        <div class="tall-marker">⋯ 422 more packs ⋯</div>
+        <label class="toggle"><input type="checkbox"><span>Exclude duplicate cards</span></label>
+        <label class="toggle"><input type="checkbox"><span>Exclude vulgar cards</span></label>
+        <label class="toggle"><input type="checkbox"><span>Vulgar cards only</span></label>
+        <label class="toggle"><input type="checkbox"><span>Include my custom cards</span></label>
+      </div>
+
+      <button class="primary">Start Game</button>
+    </div>
+  </section>
+
+  <!-- ======================= AFTER ======================= -->
+  <section class="side">
+    <h2>Proposed</h2>
+    <p class="note">Same settings, none removed. Collapsed by default with a live summary; Start Game sits above the fold.</p>
+    <div class="phone">
+      <div class="roomhead"><span class="room-code">QK4T9</span><span class="badge">lobby</span></div>
+
+      <!-- E: presets -->
+      <div class="panel">
+        <h3>Quick setup</h3>
+        <div class="chips">
+          <span class="chip on">Classic</span>
+          <span class="chip">Chaos</span>
+          <span class="chip">Quick (5 rounds)</span>
+          <span class="chip">Last night's</span>
+        </div>
+        <p class="muted" style="margin-top:.5rem">One tap sets the rules, packs and win condition. Tweak anything below.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Players <span class="muted">· 3</span></h3>
+        <div class="row between"><span>Alice <span class="muted">(host)</span></span><button>Make host</button></div>
+        <div class="row between"><span>Bob</span><button>Kick</button></div>
+        <div class="row between"><span>Carol</span><button>Kick</button></div>
+      </div>
+
+      <!-- A: collapsed sections -->
+      <details class="acc">
+        <summary>
+          <span class="chev">›</span><span class="title">House Rules</span>
+          <span class="summary">2 on · win at 7</span>
+        </summary>
+        <div class="body">
+          <p class="group-label">Gameplay</p>
+          <label class="toggle"><input type="checkbox"><span>Rando Cardrissian</span></label>
+          <label class="toggle"><input type="checkbox"><span>Double Down</span></label>
+          <label class="toggle"><input type="checkbox"><span>Trade-In</span></label>
+          <label class="toggle"><input type="checkbox"><span>Crowd Favorite</span></label>
+          <label class="toggle"><input type="checkbox"><span>Custom Prompts</span></label>
+          <label class="toggle"><input type="checkbox"><span>Action Cards</span> <button class="link" style="margin-left:auto;font-size:.75rem">Configure</button></label>
+
+          <p class="group-label">Cards &amp; drawing</p>
+          <label class="toggle"><input type="checkbox" checked><span>Auto Draw</span></label>
+          <label class="toggle"><input type="checkbox"><span>Hand Refresh</span></label>
+          <label class="toggle"><input type="checkbox"><span>Pick Bonus</span></label>
+          <label class="toggle"><input type="checkbox"><span>Single Answer Cards Only</span></label>
+          <label class="toggle"><input type="checkbox"><span>Personal Cards</span> <button class="link" style="margin-left:auto;font-size:.75rem">Configure</button></label>
+
+          <p class="group-label">Table &amp; pacing</p>
+          <label class="toggle"><input type="checkbox" checked><span>Catch Up New Players</span></label>
+          <label class="toggle"><input type="checkbox"><span>No Scorekeeping</span></label>
+          <div class="slider"><span>Win at</span><input type="range" value="7" min="1" max="15"><span class="muted">7 cards</span></div>
+          <div class="slider"><span>Hand size</span><input type="range" value="10" min="4" max="20"><span class="muted">10</span></div>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary>
+          <span class="chev">›</span><span class="title">Packs</span>
+          <span class="summary">Official · 19,604 cards</span>
+        </summary>
+        <div class="body">
+          <div class="row" style="gap:.4rem;flex-wrap:wrap">
+            <button style="font-size:.75rem">Official only</button><button style="font-size:.75rem">Select all</button><button style="font-size:.75rem">None</button>
+          </div>
+          <label class="toggle" style="margin-top:.5rem"><input type="checkbox" checked><span>CAH Base Set</span></label>
+          <label class="toggle"><input type="checkbox" checked><span>Red Box Expansion</span></label>
+          <label class="toggle"><input type="checkbox" checked><span>Blue Box Expansion</span></label>
+          <div class="tall-marker">⋯ 424 more ⋯</div>
+          <label class="toggle"><input type="checkbox"><span>Exclude duplicates</span></label>
+          <label class="toggle"><input type="checkbox"><span>Exclude vulgar cards</span></label>
+        </div>
+      </details>
+
+      <!-- B: style moved out -->
+      <div class="panel">
+        <div class="stylerow">
+          <div>
+            <div style="font-weight:700;font-size:.9rem">Shared Screen</div>
+            <div class="muted"><span class="swatch"></span> Bulletin · Cool Teal · Command Strip</div>
+          </div>
+          <button>Change…</button>
+        </div>
+        <p class="muted" style="margin-top:.5rem">Opens the Template Editor, which already does this properly.</p>
+      </div>
+
+      <!-- F: diff summary -->
+      <div class="changed">
+        <b>Not the defaults</b>
+        Auto Draw on · Catch Up on · Win at 7 black cards · Official packs only
+      </div>
+
+      <button class="primary">Start Game</button>
+      <p class="muted" style="text-align:center;margin:.5rem 0 0">Everything above fits one screen.</p>
+    </div>
+  </section>
+
+</div>
+
+<section class="legend">
+  <h2>What changed, and why</h2>
+  <ol>
+    <li>
+      <span class="tag">A</span><b>Collapse the sections.</b>
+      House Rules and Packs become accordions with a live one-line summary (“2 on · win at 7”), so the common case —
+      glance, confirm, start — needs no scrolling at all. Nothing is removed; it's one tap away. This alone is most of
+      the 4,797px → ~900px saving.
+    </li>
+    <li>
+      <span class="tag">B</span><b>Shared Screen Style becomes one row.</b>
+      1,213px of theme, accent, four sliders, layout and presets collapses to a summary line and a
+      <em>Change…</em> button pointing at the Template Editor at <code>/editor</code> — which already does all of this,
+      better, and is where you'd design a look ahead of time anyway. Removes a quarter of the page and a genuine
+      duplication.
+    </li>
+    <li>
+      <span class="tag">C</span><b>House Rules grouped under subheads.</b>
+      Twelve unrelated toggles become <em>Gameplay</em>, <em>Cards &amp; drawing</em>, <em>Table &amp; pacing</em>.
+      Cheap, and makes the list scannable rather than a wall.
+    </li>
+    <li>
+      <span class="tag">D</span><b>Sub-settings move behind “Configure”.</b>
+      Today, switching on Action Cards injects a density slider and a nine-row tier panel inline; Personal Cards adds
+      two sliders. The page reflows under your thumb and grows unpredictably. A <em>Configure</em> link keeps the rule
+      list a fixed height.
+    </li>
+    <li>
+      <span class="tag opt">E</span><b>Quick-setup presets <em>(optional, bigger job)</em>.</b>
+      One tap for a whole configuration. This is the real usability win for a party — at 11pm nobody wants to touch 31
+      controls. The plumbing already exists twice over (Table Style presets, Pack Selection presets), so it's a familiar
+      pattern rather than new invention.
+    </li>
+    <li>
+      <span class="tag opt">F</span><b>“Not the defaults” summary <em>(optional, nearly free)</em>.</b>
+      A last sanity-check above Start Game. <code>RulesSummaryPanel</code> already computes exactly this for the shared
+      screen, so a compact variant is mostly reuse.
+    </li>
+  </ol>
+  <p class="muted" style="margin-top:1.2rem;max-width:78ch">
+    A–D are mechanical: no behaviour changes, no server changes, nothing removed. E and F are separable and can wait.
+  </p>
+</section>
+
+</div>
+</body>
+</html>

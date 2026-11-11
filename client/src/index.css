@@ -1,0 +1,3392 @@
+:root {
+  color-scheme: light dark;
+  --bg: #17171b;
+  --paper: #f0efe6;
+  --ink: #17171b;
+  --accent: #2547e0;
+  --white-card-bg: #ffffff;
+  --white-card-fg: #17171b;
+  --card-radius: 10px;
+  --display-font: inherit;
+  --display-weight: 700;
+  --card-black-transform: none;
+  --action-btn-clip: none;
+  --action-btn-fg: white;
+  --card-back-pattern: linear-gradient(135deg, color-mix(in srgb, var(--accent) 45%, var(--bg)), var(--bg));
+  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+/* Table (Shared Screen) theme: every role picks up the room's chosen
+   color/shape tokens now, not just the Shared Screen itself - a Czar's or
+   player's own phone should match the room's look. Only sizing and layout
+   stay Shared-Screen-exclusive (see the .page.role-table block below,
+   still gated on the role-table class). The room's chosen accent swatch
+   is applied as an inline --accent override on .page, which beats these
+   defaults since inline style wins on specificity.
+
+   Bulletin isn't just Felt with a different accent color - the design
+   mockup (docs/mockups/table-style-picker.html) gives it a genuinely
+   different "block" visual language: sharp corners (already covered by
+   --card-radius:0), uppercase display text, angled/clipped action
+   buttons, and a striped card-back instead of a soft gradient. Those
+   need their own tokens here, not just color swaps. */
+.page[data-table-theme="felt"] {
+  --bg: #101014;
+  --paper: #f2f0ea;
+  --accent: #4c6fff;
+  --white-card-bg: #f5f4ee;
+  --white-card-fg: #17161a;
+  --card-radius: 14px;
+  --display-font: "Barlow Condensed", sans-serif;
+  --display-weight: 800;
+  --card-black-transform: none;
+  --action-btn-clip: none;
+  --action-btn-fg: white;
+  --card-back-pattern: linear-gradient(135deg, color-mix(in srgb, var(--accent) 45%, var(--bg)), var(--bg));
+}
+/* Glow/scene backgrounds apply on the Shared Screen always, and on phones
+   only when the room's mobileBackgroundEnabled is on - [data-bg-active]
+   is a derived flag set by RoomPage/TablePreviewStage so every one of
+   these rules only needs to check one attribute instead of a
+   role-table-OR-mobile-toggle multi-selector per theme. */
+.page[data-bg-active="true"][data-table-theme="felt"][data-background-style="glow"] {
+  background: radial-gradient(circle at 85% -10%, rgba(76, 111, 255, 0.3), transparent 50%),
+    radial-gradient(circle at 5% 100%, rgba(139, 92, 246, 0.24), transparent 45%), var(--bg);
+}
+.page[data-table-theme="bulletin"] {
+  --bg: #0a0a0c;
+  --paper: #f5f5f5;
+  --accent: #ffb020;
+  --white-card-bg: #eceae3;
+  --white-card-fg: #0a0a0c;
+  --card-radius: 0px;
+  --display-font: "Big Shoulders Display", sans-serif;
+  --display-weight: 800;
+  --card-black-transform: uppercase;
+  --action-btn-clip: polygon(6% 0, 100% 0, 94% 100%, 0 100%);
+  --action-btn-fg: var(--bg);
+  --card-back-pattern: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--bg) 85%, white),
+    color-mix(in srgb, var(--bg) 85%, white) 8px,
+    var(--bg) 8px,
+    var(--bg) 16px
+  );
+}
+.page[data-bg-active="true"][data-table-theme="bulletin"][data-background-style="glow"] {
+  background: radial-gradient(ellipse at 12% -12%, rgba(255, 176, 32, 0.3), transparent 45%),
+    radial-gradient(ellipse at 88% -12%, rgba(255, 176, 32, 0.3), transparent 45%), var(--bg);
+}
+
+/* Black-light/fluorescent: Monoton (the genuinely neon-tube-shaped face) is
+   unreadable at the sentence lengths --display-font gets used at here (the
+   actual black card prompt, not just a short kicker) - Orbitron keeps the
+   glow-sign character while staying legible at full sentences. */
+.page[data-table-theme="neon"] {
+  --bg: #0a0710;
+  --paper: #ede4fb;
+  --accent: #ff2fb0;
+  --white-card-bg: #f7f2ff;
+  --white-card-fg: #1a1024;
+  --card-radius: 8px;
+  --display-font: "Orbitron", sans-serif;
+  --display-weight: 700;
+  --card-black-transform: uppercase;
+  --action-btn-clip: none;
+  --action-btn-fg: #150d24;
+  --card-back-pattern: linear-gradient(150deg, #2a1246 0%, #12081f 70%);
+}
+.page[data-table-theme="neon"] .card-black {
+  border: 1.5px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 40px -8px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.page[data-bg-active="true"][data-table-theme="neon"][data-background-style="glow"] {
+  background: radial-gradient(circle at 92% -4%, rgba(255, 47, 176, 0.32), transparent 45%),
+    radial-gradient(circle at 4% 102%, rgba(42, 240, 255, 0.24), transparent 45%), var(--bg);
+}
+
+/* Construction Zone (was "Techno" until that name got reused below for a
+   genuinely electronic-music identity - this hazard-stripe/warehouse-rig
+   look reads as a construction site, not a nightclub). Sharp corners
+   everywhere (--card-radius: 0, shared with Bulletin's jumbotron look but
+   starker - no soft glow, no gradient card-back, just repeating
+   hazard-adjacent stripes). */
+.page[data-table-theme="site"] {
+  --bg: #0d0d0e;
+  --paper: #ededea;
+  --accent: #d7ff2b;
+  --white-card-bg: #ededea;
+  --white-card-fg: #0d0d0e;
+  --card-radius: 0px;
+  --display-font: "Anton", sans-serif;
+  --display-weight: 400;
+  --card-black-transform: uppercase;
+  --action-btn-clip: polygon(4% 0, 100% 0, 96% 100%, 0 100%);
+  --action-btn-fg: #0d0d0e;
+  --card-back-pattern: repeating-linear-gradient(45deg, #1c1c1c 0 10px, #141414 10px 20px);
+}
+.page[data-table-theme="site"] .card-black {
+  border: 2px solid color-mix(in srgb, var(--paper) 15%, transparent);
+  border-top: 6px solid var(--accent);
+}
+.page[data-bg-active="true"][data-table-theme="site"][data-background-style="glow"] {
+  background: radial-gradient(ellipse 55% 40% at 6% -4%, rgba(215, 255, 43, 0.3), transparent 65%),
+    radial-gradient(ellipse 55% 40% at 94% -4%, rgba(255, 122, 26, 0.28), transparent 65%), var(--bg);
+}
+
+/* Techno: minimal club electronic-music identity - stark near-black, one
+   laser-bright accent, an angular digital display face, and a notched
+   HUD-style card treatment instead of a hazard-tape one. Distinct from
+   Neon's black-light glow (that's a poster-room feel; this is a screen/
+   rig feel) and from Construction Zone above (that's an industrial site,
+   this is a nightclub). */
+.page[data-table-theme="techno"] {
+  --bg: #0a0b10;
+  --paper: #eef0f3;
+  --accent: #00ffa3;
+  --white-card-bg: #eef0f3;
+  --white-card-fg: #0a0b10;
+  --card-radius: 2px;
+  --display-font: "Chakra Petch", sans-serif;
+  --display-weight: 700;
+  --card-black-transform: uppercase;
+  --action-btn-clip: none;
+  --action-btn-fg: #0a0b10;
+  --card-back-pattern: repeating-linear-gradient(90deg, #14161c 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(0deg, #14161c 0 1px, transparent 1px 24px), #0a0b10;
+}
+/* Digital-club HUD bezel: a thin frame plus a second, offset outline
+   ring - a "screen inside a screen" read rather than Construction Zone's
+   hazard-tape top bar. */
+.page[data-table-theme="techno"] .card-black {
+  border: 1px solid var(--accent);
+  outline: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 5px;
+}
+.page[data-bg-active="true"][data-table-theme="techno"][data-background-style="glow"] {
+  background: radial-gradient(circle at 8% -6%, rgba(0, 255, 163, 0.28), transparent 42%),
+    radial-gradient(circle at 92% 102%, rgba(255, 0, 229, 0.24), transparent 42%), var(--bg);
+}
+
+/* The original mockup's genuinely light/bright sun-bleached sand stage,
+   restored - an earlier pass here found it broke real UI text (buttons,
+   .panel, .error, and a dozen more) and pivoted to a dark "tropical night"
+   compromise instead. The actual bug was narrower than that reaction
+   assumed: a small, fixed set of rules (input/button's own hardcoded
+   #232228 fill, a dozen `rgba(255,255,255,X)` "lighten toward white"
+   panel/border tints, two hardcoded light-red warning colors) were never
+   theme-token-aware in the first place, on every theme, not just this one
+   - they just happened to look fine by coincidence as long as every theme
+   stayed dark. Fixed at the source (those rules now derive from --paper/
+   --bg via color-mix, so they self-adjust to whichever direction a theme
+   goes) rather than worked around here again. */
+.page[data-table-theme="beach"] {
+  --bg: #fbf1dd;
+  --paper: #2b2118;
+  --accent: #ff6b4a;
+  --white-card-bg: #fffdf6;
+  --white-card-fg: #2b2118;
+  --card-radius: 22px;
+  --display-font: "Baloo 2", cursive;
+  --display-weight: 700;
+  --card-black-transform: none;
+  --action-btn-clip: none;
+  --action-btn-fg: #fff;
+  --card-back-pattern: repeating-linear-gradient(135deg, #ffb238 0 16px, #ff9f1f 16px 32px);
+}
+/* The mockup's atmosphere - a warm sun-glow top-right, a cool ocean-glow
+   top-left - got flattened to the plain --bg color when this became a real
+   theme (true of every theme here, not just this one; .page's base rule is
+   a flat `background: var(--bg)`). Gated behind [data-background-style="glow"]
+   (every theme has one now, not just this one) AND [data-bg-active="true"]
+   (Shared Screen always, phones only when mobileBackgroundEnabled is on) -
+   Specificity (class + three attributes vs. .page's plain class) is what
+   lets this win over the flat base rule when both are true. */
+.page[data-bg-active="true"][data-table-theme="beach"][data-background-style="glow"] {
+  background:
+    radial-gradient(circle at 90% -6%, rgba(255, 178, 56, 0.35), transparent 45%),
+    radial-gradient(circle at 6% 8%, rgba(31, 143, 138, 0.16), transparent 40%),
+    var(--bg);
+}
+.page[data-table-theme="beach"] .card-black {
+  border: 2px solid var(--accent);
+}
+/* White reads poorly against the card-back's own light gold/orange
+   stripes regardless of the stage's own light/dark direction - a local
+   fix to the mark's contrast against its immediate background, not the
+   stage-wide light/dark question the rest of this theme block is about. */
+.page[data-table-theme="beach"] .card-back-mark {
+  color: #2b2118;
+  opacity: 0.7;
+}
+
+/* Lamp-lit analog parlour: cards fanned like a real hand rather than a
+   grid (see .judging-grid.parlour-fan below) - legibility for that comes
+   from Room.updateTableStyle forcing Spotlight on for this theme, not from
+   the ambient fan being independently readable, so the fan keeps its full
+   overlap/rotation instead of being watered down. */
+.page[data-table-theme="parlour"] {
+  --bg: #1a1410;
+  --paper: #f1e9db;
+  --accent: #d98a3d;
+  --white-card-bg: #efe6d8;
+  --white-card-fg: #1d1712;
+  --card-radius: 14px;
+  --display-font: "Fraunces", serif;
+  --display-weight: 600;
+  --card-black-transform: none;
+  --action-btn-clip: none;
+  --action-btn-fg: #1a1410;
+  --card-back-pattern: linear-gradient(160deg, #2c2015, #171009 70%);
+}
+.page[data-table-theme="parlour"] .card-black p {
+  font-style: italic;
+}
+.page[data-table-theme="parlour"] .card-black p::before,
+.page[data-table-theme="parlour"] .card-black p::after {
+  content: '"';
+  color: var(--accent);
+}
+.page[data-bg-active="true"][data-table-theme="parlour"][data-background-style="glow"] {
+  background: radial-gradient(circle at 14% -6%, rgba(217, 138, 61, 0.38), transparent 50%), var(--bg);
+}
+
+/* Retrowave / outrun: a purple-night-to-sunset gradient card back (the
+   genre's signature image) stands in for Neon's black-light glow or
+   Techno's hazard stripes as this theme's own visual hook, so it doesn't
+   just read as "Neon but pink" despite sharing part of that palette.
+   --card-radius sits at 6px - distinct from every other theme's radius,
+   a small chrome-bezel roundness rather than Neon's 8px or Techno's 0. */
+.page[data-table-theme="synthwave"] {
+  --bg: #150a2e;
+  --paper: #f6e8ff;
+  --accent: #ff3ea5;
+  --white-card-bg: #fff4fb;
+  --white-card-fg: #1a0e2e;
+  --card-radius: 6px;
+  --display-font: "Audiowide", sans-serif;
+  --display-weight: 400;
+  --card-black-transform: uppercase;
+  --action-btn-clip: polygon(5% 0, 100% 0, 95% 100%, 0 100%);
+  --action-btn-fg: #150a2e;
+  --card-back-pattern: linear-gradient(180deg, #2d0b53 0%, #7b1fa2 38%, #ff3ea5 68%, #ff8a3d 100%);
+}
+/* The "horizon line" - a thick accent-colored bottom border under the
+   black card, plus the same glow treatment Neon uses for its own accent -
+   applied here for a chrome-sign-under-a-streetlight read instead. */
+.page[data-table-theme="synthwave"] .card-black {
+  border: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-bottom: 5px solid var(--accent);
+  box-shadow: 0 0 34px -8px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+/* Atmosphere: a magenta "sun" glow rising from the bottom edge plus a
+   faint cyan wash opposite it - same layered-radial-over-flat-bg pattern
+   as every theme's own glow now, gated the same way (see Beach's own
+   rule above for the full explanation of both attributes). */
+.page[data-bg-active="true"][data-table-theme="synthwave"][data-background-style="glow"] {
+  background:
+    radial-gradient(circle at 50% 105%, rgba(255, 62, 165, 0.35), transparent 55%),
+    radial-gradient(circle at 12% 0%, rgba(34, 224, 255, 0.14), transparent 45%),
+    var(--bg);
+}
+
+.page[data-table-theme="windward"] {
+  --bg: #0a1b28;
+  --paper: #ecdfc0;
+  --accent: #c9a227;
+  --white-card-bg: #ecdfc0;
+  --white-card-fg: #1c2b26;
+  --card-radius: 4px;
+  --display-font: "Oswald", sans-serif;
+  --display-weight: 700;
+  --card-black-transform: uppercase;
+  --action-btn-clip: polygon(0 0, 92% 0, 100% 50%, 92% 100%, 0 100%);
+  --action-btn-fg: #0a1b28;
+  --card-back-pattern: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.14) 0 2px, transparent 2px 14px),
+    linear-gradient(160deg, #142f42, #0b2030);
+}
+/* Ship's-log page: a brass rivet in each top corner, same idea as
+   Synthwave's own accent-colored card treatment above but with a fixed
+   physical detail instead of a glow, since brass rivets read as this
+   theme's signature the way the horizon line does for Synthwave. */
+.page[data-table-theme="windward"] .card-black {
+  position: relative;
+  border: 2px solid color-mix(in srgb, var(--accent) 35%, #1c3b52);
+}
+.page[data-table-theme="windward"] .card-black::before,
+.page[data-table-theme="windward"] .card-black::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 80%, white), color-mix(in srgb, var(--accent) 40%, black) 70%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.page[data-table-theme="windward"] .card-black::before { left: 8px; }
+.page[data-table-theme="windward"] .card-black::after { right: 8px; }
+/* Moonlight on water: a pale glow from the upper corner (the moon) plus a
+   warm brass wash rising from the bottom (its reflection), the same
+   layered-radial-over-flat-bg pattern every theme's glow uses. */
+.page[data-bg-active="true"][data-table-theme="windward"][data-background-style="glow"] {
+  background:
+    radial-gradient(ellipse 70% 40% at 82% 6%, rgba(236, 223, 192, 0.16), transparent 55%),
+    radial-gradient(circle at 50% 115%, rgba(201, 162, 39, 0.16), transparent 60%),
+    var(--bg);
+}
+
+/* Drawn theme-scene backgrounds (TableStyle.backgroundStyle === "scene",
+   see client/src/themeScenes.ts + components/ThemeScene.tsx). Ported
+   from docs/mockups/theme-ambient-backgrounds.html, where every scene and
+   its animation were tuned and screenshot-verified before landing here. */
+.theme-scene {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.theme-scene svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Synthwave's grid floor: a real CSS 3D plane, not an SVG line trick -
+   @keyframes only interpolates linearly, so animating SVG line positions
+   directly gives constant-speed motion, never the accelerating-as-it-
+   nears-the-viewer illusion of real perspective. A flat tiled grid
+   pattern, tilted back with rotateX() under a perspective() parent, and
+   scrolled at a constant background speed, comes out foreshortened by the
+   3D transform itself for free. perspective:500px/rotateX(65deg) were
+   found by isolated empirical testing - a shorter perspective distance
+   (260px, under the floor's own rendered height) combined with a
+   near-edge-on 80deg tilt pushed most of the plane behind the camera
+   plane entirely, rendering as nothing rather than just faint. */
+.synth-grid-floor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 32%; /* matches horizonY/h (200/625) in themeScenes.ts's synthwaveSunset */
+  bottom: 0;
+  overflow: hidden;
+  perspective: 500px;
+  perspective-origin: 50% 0%;
+}
+.synth-grid-floor .plane {
+  position: absolute;
+  /* Generously overhung on every side: after rotateX() tilts this
+     toward flat, its edges need to already reach past the visible
+     trapezoid or the corners go blank instead of showing more grid. */
+  left: -150%;
+  right: -150%;
+  top: -10%;
+  bottom: -220%;
+  background-image: repeating-linear-gradient(0deg, var(--grid-color) 0 2px, transparent 2px 46px),
+    repeating-linear-gradient(90deg, var(--grid-color) 0 2px, transparent 2px 70px);
+  opacity: 0.75;
+  transform: rotateX(65deg);
+  transform-origin: top center;
+}
+
+/* Scene animation, one class per effect, every theme opting in the same
+   way (a class on the element(s) + this shared gate). transform-box is
+   set per-rule because SVG's default reference frame is inconsistent
+   across element types; fill-box anchors to the element's OWN box
+   (needed for a bar/ripple to scale from its own edge/center rather than
+   the canvas origin), view-box is for a group whose transform-origin is
+   a specific scene coordinate (the laser fan's light source, a swaying
+   fixture's cable attachment point) rather than the group's own bounds. */
+@media (prefers-reduced-motion: no-preference) {
+  .theme-scene.animate .eq-bar {
+    transform-box: fill-box;
+    transform-origin: bottom;
+    animation-name: eqPulse;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  .theme-scene.animate .laser-fan {
+    transform-box: view-box;
+    animation: laserSweep 5s ease-in-out infinite;
+  }
+  .theme-scene.animate .strobe-fleck {
+    animation-name: flickerPulse;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  .theme-scene.animate .ripple {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation-name: rippleExpand;
+    animation-timing-function: ease-out;
+    animation-iteration-count: infinite;
+  }
+  .theme-scene.animate .scanline {
+    animation: scanSweep 6s linear infinite;
+  }
+  .theme-scene.animate .neon-flicker {
+    animation: neonFlicker 3.4s infinite;
+  }
+  .theme-scene.animate .twinkle {
+    animation-name: flickerPulse;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  .theme-scene.animate .fixture-sway {
+    transform-box: view-box;
+    animation: fixtureSway 4s ease-in-out infinite;
+  }
+  .theme-scene.animate .wave-scroll {
+    animation: waveScroll 6s linear infinite;
+  }
+  .theme-scene.animate .lamp-flicker {
+    animation: lampFlicker 5s ease-in-out infinite;
+  }
+  .theme-scene.animate .horizon-glow {
+    animation: horizonPulse 2.6s ease-in-out infinite;
+  }
+  .theme-scene.animate .synth-grid-floor .plane {
+    animation: gridFly 1.4s linear infinite;
+  }
+  .theme-scene.animate .gull-bob {
+    animation: gullBob 6s ease-in-out infinite;
+  }
+  .theme-scene.animate .beam-sweep {
+    transform-box: view-box;
+    animation: beamSweep 7s ease-in-out infinite;
+  }
+  .theme-scene.animate .wheel-turn {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: wheelTurn 240s linear infinite;
+  }
+}
+@keyframes horizonPulse {
+  0%, 100% { opacity: 0.6; stroke-width: 2.5; }
+  50% { opacity: 1; stroke-width: 6; }
+}
+@keyframes gridFly {
+  from { background-position-y: 0; }
+  to { background-position-y: 46px; }
+}
+@keyframes eqPulse {
+  0%, 100% { transform: scaleY(var(--eq-min, 0.4)); }
+  50% { transform: scaleY(1); }
+}
+@keyframes laserSweep {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+/* Shared by strobe flecks, twinkling paint flecks, and the synthwave
+   grid's energy-pulse - all the same "breathe between two opacities"
+   shape, with per-element --flicker-lo/--flicker-hi/duration/delay so a
+   whole scattered set doesn't move in lockstep. */
+@keyframes flickerPulse {
+  0%, 100% { opacity: var(--flicker-lo, 0.2); }
+  50% { opacity: var(--flicker-hi, 0.8); }
+}
+@keyframes rippleExpand {
+  0% { transform: scale(0.85); opacity: var(--ripple-o, 0.2); }
+  100% { transform: scale(1.18); opacity: 0; }
+}
+@keyframes scanSweep {
+  0% { transform: translateY(-30px); opacity: 0; }
+  8% { opacity: 0.5; }
+  92% { opacity: 0.5; }
+  100% { transform: translateY(625px); opacity: 0; }
+}
+@keyframes neonFlicker {
+  0%, 18%, 22%, 26%, 55%, 100% { opacity: 1; }
+  20%, 24%, 56% { opacity: 0.35; }
+}
+@keyframes fixtureSway {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50% { transform: rotate(2.5deg); }
+}
+@keyframes waveScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-250px); }
+}
+@keyframes lampFlicker {
+  0%, 100% { opacity: 0.16; }
+  40% { opacity: 0.19; }
+  45% { opacity: 0.11; }
+  50% { opacity: 0.18; }
+  75% { opacity: 0.14; }
+}
+@keyframes gullBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes beamSweep {
+  0%, 100% { transform: rotate(-18deg); opacity: 0.5; }
+  50% { transform: rotate(14deg); opacity: 0.85; }
+}
+@keyframes wheelTurn {
+  to { transform: rotate(360deg); }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--paper);
+  min-height: 100vh;
+  /* Defense-in-depth: any future element wider than the viewport should
+     scroll within its own box (see .round-history-panel, table overflow
+     elsewhere), never force the whole page - and never balloon a mobile
+     browser's layout viewport, which is what actually caused the
+     header-buttons overflow bug this was added alongside. */
+  overflow-x: hidden;
+}
+
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+  /* Bottom clearance for the fixed .scoreboard and .submit-bar (see those
+     rules) - both measure their own live height into these vars, which
+     default to 0px on any page that never mounts them. */
+  padding: 1.25rem 1rem calc(2rem + var(--scoreboard-height, 0px) + var(--submit-bar-height, 0px));
+  /* --bg/--paper are defined on .page[data-table-theme], a DESCENDANT of
+     body - body's own `color: var(--paper)` (see above) resolves that var
+     at body's own scope, which never sees the override, so its computed
+     color (the root default, a near-white) is what actually inherits down
+     to every themed page, regardless of theme. Invisible until now because
+     every theme so far picked a --paper close to that same near-white by
+     coincidence - Beach's genuinely dark --paper is what exposed it.
+     Redeclaring both here re-resolves them at .page's own scope, where the
+     theme override is actually visible. */
+  background: var(--bg);
+  color: var(--paper);
+  position: relative;
+  /* position:relative alone (z-index:auto) does NOT create a stacking
+     context, so ThemeScene's z-index:-1 would otherwise escape past
+     .page entirely and paint behind the whole box - including .page's
+     own background - rather than just behind its content. Confirmed the
+     hard way while building the design mockup this was ported from. */
+  isolation: isolate;
+}
+
+/* Table mode: a shared tablet/TV screen viewed from across the room, not a
+   phone in hand — use the width that's actually there, and let the person
+   fine-tune overall size with the +/- controls (persisted per device). The
+   `zoom` on .page (set inline, since it's user-adjustable) scales layout,
+   text and hit-targets together without needing an em-based rewrite of the
+   rest of this stylesheet. */
+.page.role-table {
+  /* --table-max-width is set inline by RoomPage's auto-fit (see the
+     useLayoutEffect there) once content needs to shrink for height - it
+     widens this cap in inverse proportion to that shrink so the RENDERED
+     width (this cap × zoom) stays close to the un-shrunk baseline instead
+     of shrinking along with height. Falls back to the plain baseline when
+     unset (Lobby phase, or content that already fits with no shrink
+     needed). */
+  max-width: min(96vw, var(--table-max-width, 1800px));
+  padding: 1.5rem 2rem 3rem;
+  min-height: 100vh;
+}
+
+.page.role-table .hand,
+.page.role-table .judging-grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.page.role-table .card-black,
+.page.role-table .panel {
+  padding: 1.5rem 1.75rem;
+}
+
+.page.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 3rem;
+  gap: 0.5rem;
+}
+
+/* HomePage, Card Management and the Admin page are read top-to-bottom
+   settings/content, not a phone-in-hand game screen - unlike RoomPage's
+   live views (deliberately left alone; see CLAUDE.md's deferred
+   Table-layout note), there's no reason to keep them pinned to a phone-
+   width column once there's real desktop space. `.dashboard` is opt-in
+   per page (CustomCardsPage, AdminPage) so this never reaches RoomPage's
+   plain `.page`.
+
+   Reflows into columns via CSS multi-column, not a grid: Card Management
+   mixes short settings panels with genuinely long ones (white/black card
+   lists can run to hundreds of rows), and a grid locks every item in a
+   row to the tallest one, which would leave a huge gap under every short
+   panel next to a tall one. Multi-column doesn't have that problem -
+   content just flows continuously down one column and continues at the
+   top of the next, the way a newspaper does. `column-width` picks the
+   column count from available space on its own (1 on a phone, 2-3+ on a
+   wide monitor), so no breakpoint juggling is needed for the column count
+   itself - only the max-width widening below is gated to desktop. */
+.page.dashboard {
+  column-width: 420px;
+  column-gap: 1.25rem;
+}
+.page.dashboard > .room-header {
+  column-span: all;
+}
+.page.dashboard > .panel {
+  break-inside: avoid;
+}
+
+@media (min-width: 900px) {
+  .page.dashboard {
+    max-width: 1400px;
+  }
+  .page.center {
+    max-width: 720px;
+  }
+}
+
+/* Card Management's own layout: a sidebar (desktop) / sticky top tab bar
+   (phone) next to a single active section at a time, instead of the
+   dashboard's "everything flows in multi-column at once" approach - a
+   deliberate different information architecture for this one page, not a
+   dashboard variant, so it gets its own classes rather than reusing
+   .page.dashboard. One DOM structure throughout; only the CSS at the
+   761px breakpoint changes which way .card-mgmt-nav lays out - no JS
+   media-query branching needed. */
+.card-mgmt-layout {
+  display: flex;
+  flex-direction: column;
+}
+.card-mgmt-nav {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  background: var(--bg);
+  border-bottom: 1px solid color-mix(in srgb, var(--paper) 12%, transparent);
+  padding: 0.3rem 0.2rem;
+}
+.card-mgmt-nav-item {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--card-radius);
+  color: var(--paper);
+  opacity: 0.6;
+  padding: 0.35rem 0.15rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.card-mgmt-nav-item.active {
+  opacity: 1;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+}
+.card-mgmt-nav-icon {
+  width: 1.2em;
+  height: 1.2em;
+}
+.card-mgmt-nav-count {
+  font-size: 0.65rem;
+  background: color-mix(in srgb, var(--paper) 10%, transparent);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+}
+.card-mgmt-content {
+  padding: 1rem 0;
+}
+.card-mgmt-two-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+@media (min-width: 761px) {
+  .card-mgmt-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0;
+  }
+  .card-mgmt-nav {
+    position: static;
+    flex-direction: column;
+    width: 240px;
+    flex-shrink: 0;
+    border-bottom: none;
+    border-right: 1px solid color-mix(in srgb, var(--paper) 12%, transparent);
+    padding: 1.2rem 0.7rem;
+  }
+  .card-mgmt-nav-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.65rem;
+    font-size: 0.92rem;
+    padding: 0.65rem 0.85rem;
+  }
+  .card-mgmt-nav-count {
+    margin-left: auto;
+  }
+  .card-mgmt-content {
+    flex: 1;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 1.6rem 2.2rem;
+  }
+  .card-mgmt-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.9rem;
+    align-items: start;
+  }
+  /* .page's own base rule caps every page at 640px (right for a one-column
+     phone-shaped game screen) - this page needs room for a 240px sidebar
+     plus up to 1280px of content next to it, so it opts out the same way
+     .page.dashboard already does for its own multi-column layout. The
+     inner .card-mgmt-content max-width above is what actually bounds
+     content growth; this just stops the outer .page from clipping it first. */
+  .page.card-mgmt-page {
+    max-width: none;
+  }
+}
+
+/* HomePage's own layout: a centered hero (name, join box) above a row of
+   secondary action panels. Grid rather than the dashboard's multi-column,
+   since these four panels are all comparable, short lengths - there's no
+   tall-outlier problem here to solve, and a grid keeps them looking like
+   a deliberate row of cards rather than a flowing column of text. */
+.home {
+  /* .page's own base rule caps max-width at 640px for the phone-width
+     default - .home-hero/.home-actions below set their own, wider
+     max-widths, but a child's max-width can never exceed what its parent
+     actually is, so without this override they were silently clamped
+     back down to 640px regardless of viewport. */
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 2.5rem;
+}
+.home-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 480px;
+}
+/* The game's own name, the first thing anyone sees - the generic h1 rule
+   (1.7rem, shared with every dense settings-panel heading in the app) reads
+   as too small for what's actually a landing-page title. */
+.home-hero h1 {
+  font-size: clamp(2.2rem, 6vw, 3.6rem);
+}
+.home-join {
+  width: 100%;
+}
+.home-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  width: 100%;
+  max-width: 480px;
+  margin-top: 1.5rem;
+}
+.home .changelog {
+  width: 100%;
+  max-width: 720px;
+  margin-top: 1rem;
+}
+@media (min-width: 760px) {
+  .home-hero,
+  .home-actions {
+    max-width: 900px;
+  }
+  .home-actions {
+    grid-template-columns: repeat(2, 1fr);
+    align-items: start;
+  }
+}
+@media (min-width: 1200px) {
+  .home-hero,
+  .home-actions {
+    max-width: 1100px;
+  }
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.7rem;
+  line-height: 1.2;
+  text-wrap: balance;
+  /* The one place per page it's worth letting the theme's personality
+     through at full strength (condensed/jumbotron type, same transform
+     token .card-black already uses) - h2 and smaller stay in the plain UI
+     font, since most of them are dense settings-panel labels where that
+     much display-type character would read as noisy rather than styled. */
+  font-family: var(--display-font);
+  font-weight: var(--display-weight);
+  text-transform: var(--card-black-transform);
+}
+
+.subtitle {
+  color: #a9a8a2;
+  margin: 0 0 1.5rem;
+}
+
+.panel {
+  background: color-mix(in srgb, var(--paper) 6%, transparent);
+  border-radius: var(--card-radius);
+  padding: 1rem;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.panel-divider {
+  border: none;
+  border-top: 1px solid color-mix(in srgb, var(--paper) 12%, transparent);
+  margin: 1rem 0;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0;
+}
+
+input,
+button {
+  font-size: 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  /* Was a flat #232228/#444 - correct for every dark theme so far (it
+     naturally read as "a bit lighter than the dark stage"), but on a light
+     theme it stayed just as dark, putting --paper's now-dark ink text on
+     an equally dark button fill. Deriving both from --paper/--bg instead
+     keeps the same "a bit lighter/darker than the stage" relationship in
+     either direction. */
+  border: 1px solid color-mix(in srgb, var(--paper) 25%, var(--bg));
+  background: color-mix(in srgb, var(--paper) 12%, var(--bg));
+  color: var(--paper);
+}
+
+button {
+  cursor: pointer;
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Inline SVG icons (client/src/components/Icons.tsx) default to baseline
+   alignment, which sits slightly low next to text - nudge every icon in
+   the app up a touch so "<Icon /> Label" buttons/text read as one aligned
+   unit everywhere, not just the header (which already sets this via
+   display:inline-flex; this covers every other icon+text button). */
+button svg,
+.icon svg,
+svg.icon {
+  vertical-align: -0.15em;
+}
+
+button.primary {
+  background: var(--accent);
+  color: var(--action-btn-fg);
+  font-weight: 700;
+  border-radius: var(--card-radius);
+  clip-path: var(--action-btn-clip);
+  /* Real WebKit/Safari bug, confirmed by direct reproduction: a
+     clip-path'd element inside a CSS multi-column container
+     (column-width, used by .page.dashboard for the admin/Card
+     Management pages) that follows a column-span:all sibling (the
+     .room-header) hit-tests to its own PARENT instead of itself -
+     clicks that visually land on the button are dispatched to
+     whatever's behind it, even though its painted position and
+     getBoundingClientRect() are completely correct and identical to
+     Chromium's. isolation:isolate does NOT fix it (tested); forcing GPU
+     layer promotion does - this is a compositing-layer bug, not a
+     stacking-context one. Confirmed on themes whose --action-btn-clip is
+     an actual polygon (Bulletin, Construction Zone, Synthwave) - themes
+     with --action-btn-clip:none never trigger it, since there's nothing
+     for the browser to mis-hit-test around, but the fix costs nothing
+     for those either. */
+  transform: translateZ(0);
+}
+
+.card {
+  border-radius: var(--card-radius);
+  padding: 1rem;
+  text-align: left;
+  border: none;
+  width: 100%;
+}
+
+.card-black p {
+  font-family: var(--display-font);
+  font-weight: var(--display-weight);
+  text-transform: var(--card-black-transform);
+  /* --black-card-length-scale is a second, independent multiplier (see
+     blackCardText.ts's blackCardLengthScale()) - blackCardScale alone is a
+     fixed room-wide setting with no idea how long any given card's text is,
+     so a long prompt just wrapped onto more lines and pushed the rest of a
+     phone's hand off-screen below the fold. Left at 1 (a no-op) unless a
+     phone-context render explicitly sets it - the Table's own holistic
+     page-fit (RoomPage's auto-fit zoom) already handles its own long-prompt
+     case, so it deliberately never sets this var. */
+  font-size: calc(1.4rem * var(--black-card-scale, 1) * var(--black-card-length-scale, 1));
+  line-height: 1.2;
+  /* Backstop for whatever the tiered length-scale heuristic doesn't catch
+     (an unusually long single word, an edge case between tiers) - breaks
+     rather than pushing the card wider than its container. */
+  overflow-wrap: break-word;
+}
+
+.card-black {
+  background: var(--bg);
+  color: var(--paper);
+  border: 1px solid #333;
+  text-align: center;
+}
+
+/* The Czar/Table's "waiting for everyone to submit" moment - dead time
+   worth making a feature of rather than a small card up top: the prompt
+   fills the screen, centered both ways, readable from across a room. */
+.waiting-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  min-height: 50vh;
+  text-align: center;
+}
+
+.waiting-hero .card-black p {
+  font-size: calc(2.2rem * var(--black-card-scale, 1) * var(--black-card-length-scale, 1));
+}
+
+/* The wait message/progress line next to the big Table black card was
+   still sized like ordinary phone body text - easy to miss standing
+   across the room even though the card itself already got the big
+   Table-only treatment above. */
+.page.role-table .waiting-hero > p {
+  font-size: 1.3rem;
+}
+
+/* The Czar's own phone gets the same big "waiting hero" treatment as the
+   Table (see RoomPage.tsx's WaitingPanel), but the Table's 2.2rem base was
+   tuned for a screen read from across a room and overflowed a narrow phone
+   even after --black-card-length-scale kicked in. */
+.waiting-hero-phone .card-black p {
+  font-size: calc(1.5rem * var(--black-card-scale, 1) * var(--black-card-length-scale, 1));
+}
+
+/* Personal Cards waiting screen - was three lines of small muted text with
+   nothing to look at from across the room; now a headline, a big countdown,
+   and a per-player progress bar instead of plain "3 of 5" text. */
+.personal-cards-wait-title {
+  font-family: var(--display-font);
+  font-weight: var(--display-weight);
+  text-transform: var(--card-black-transform);
+  font-size: clamp(1.5rem, 4vw, 2.6rem);
+  margin: 0;
+}
+
+.personal-cards-wait-timer {
+  font-family: var(--display-font);
+  font-weight: var(--display-weight);
+  font-size: clamp(2.2rem, 8vw, 5rem);
+  line-height: 1;
+  color: var(--accent);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.personal-cards-wait-list {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.personal-cards-wait-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.personal-cards-wait-name {
+  min-width: 7rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.personal-cards-wait-row.done .personal-cards-wait-name {
+  color: var(--accent);
+}
+
+.personal-cards-wait-bar {
+  flex: 1;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 12%, transparent);
+  overflow: hidden;
+}
+
+.personal-cards-wait-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.personal-cards-wait-count {
+  min-width: 3rem;
+  text-align: right;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Table: bigger and more glanceable from across the room, matching the
+   same "role-table gets the enlarged treatment" pattern used elsewhere
+   (RoundEnd's winner card, the spotlight/scoreboard scale controls). */
+.page.role-table .personal-cards-wait-title {
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+}
+
+.page.role-table .personal-cards-wait-timer {
+  font-size: clamp(3.5rem, 10vw, 7rem);
+}
+
+.page.role-table .personal-cards-wait-list {
+  max-width: 900px;
+}
+
+.page.role-table .personal-cards-wait-name,
+.page.role-table .personal-cards-wait-count {
+  font-size: 1.3rem;
+}
+
+.page.role-table .personal-cards-wait-bar {
+  height: 1rem;
+}
+
+.card-white {
+  background: var(--white-card-bg);
+  color: var(--white-card-fg);
+}
+
+.hand {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.6rem;
+}
+
+.hand-card {
+  position: relative;
+  min-height: 90px;
+  font-size: 0.95rem;
+}
+
+.hand-card.selected {
+  outline: 3px solid var(--accent);
+}
+
+.hand-card.pickable:hover {
+  outline: 2px solid var(--accent);
+}
+
+/* A card that was just drawn (manual draw, Auto Draw fill, or a Double
+   Down replacement) — a brief highlight so the moment reads as "you got
+   this card" rather than silently appearing in the hand grid. */
+@keyframes just-drawn-pop {
+  0% {
+    transform: scale(0.9);
+    outline-color: transparent;
+  }
+  30% {
+    transform: scale(1.04);
+    outline-color: var(--accent);
+  }
+  100% {
+    transform: scale(1);
+    outline-color: var(--accent);
+  }
+}
+
+.hand-card.just-drawn {
+  animation: just-drawn-pop 0.4s ease-out;
+  outline: 3px solid var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hand-card.just-drawn {
+    animation: none;
+  }
+}
+
+/* RoundEnd's winning card - a single card, not a grid, so it gets centered
+   rather than left-aligned in a fill-columns layout like a normal hand. */
+.roundend-winner-line {
+  font-size: 1.1rem;
+}
+
+.roundend-winner-name {
+  color: var(--accent);
+  /* Sits directly on the page/scene background - --accent alone can lose
+     contrast against a busy or bright patch of a Scene background, so a
+     translucent scrim (color-mixed from --paper, the token already chosen
+     for contrast against --bg in every theme) keeps it readable regardless
+     of what's behind it. */
+  background: color-mix(in srgb, var(--paper) 15%, transparent);
+  padding: 0.1rem 0.5rem;
+  border-radius: 6px;
+}
+
+.roundend-winning-hand {
+  display: flex;
+  justify-content: center;
+}
+
+.roundend-winner-card {
+  width: 100%;
+  max-width: 420px;
+}
+
+.roundend-winner-card p {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* Table (Shared Screen): the winner should be unmistakable from across the
+   room, not the same small card everyone's phone shows - bigger, centered,
+   and the name reads like a headline. */
+.page.role-table .roundend-winner-line {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-family: var(--display-font);
+  font-weight: var(--display-weight);
+  text-transform: var(--card-black-transform);
+}
+
+.page.role-table .roundend-winning-hand {
+  margin-top: 1rem;
+}
+
+.page.role-table .roundend-winner-card {
+  max-width: min(70vw, 900px);
+  padding: 2.5rem 3rem;
+  box-shadow: 0 40px 90px -20px rgba(0, 0, 0, 0.6);
+}
+
+.page.role-table .roundend-winner-card p {
+  font-size: clamp(1.4rem, 2.6vw, 2.2rem);
+  line-height: 1.4;
+}
+
+.double-down-offer {
+  max-width: 280px;
+}
+
+.personal-card-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.double-down-card {
+  cursor: default;
+}
+
+.order-badge {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  background: var(--accent);
+  color: white;
+  border-radius: 999px;
+  width: 1.4rem;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+}
+
+.tab-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tab-btn {
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+}
+
+.tab-btn.selected {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+}
+
+.pick-hint {
+  opacity: 0.7;
+  font-size: 0.85rem;
+  margin-top: 0.3rem;
+}
+
+.room-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.room-code {
+  font-family: var(--display-font);
+  font-weight: var(--display-weight);
+  letter-spacing: 0.08em;
+  font-size: 1.3rem;
+}
+
+.header-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Header buttons: flat, theme-tied chips rather than the app-wide bordered
+   button look - the header is a row of light utility actions (refresh,
+   menu, mute, history...), not primary calls to action, so it should read
+   as quieter chrome. Tinted from --accent (not a fixed color) and shaped
+   from --card-radius, so it picks up whichever Table theme/accent the room
+   is using without a separate light/dark or per-theme rule. Scoped to
+   .header-right only - the rest of the app's buttons keep their bordered
+   look. */
+.header-right button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--paper);
+  border-radius: var(--card-radius);
+  padding: 0.45rem 0.7rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  transition: background-color 0.15s ease;
+}
+
+.header-right button svg {
+  flex-shrink: 0;
+  font-size: 1.15em;
+}
+
+.header-right button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.header-right button:disabled {
+  background: color-mix(in srgb, var(--paper) 8%, transparent);
+}
+
+.table-scale-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.table-scale-label {
+  font-size: 0.7rem;
+  color: #a9a8a2;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table-scale-controls button {
+  padding: 0.3rem 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.host-game-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  background: color-mix(in srgb, var(--paper) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--paper) 10%, transparent);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.host-game-bar label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.host-game-bar input {
+  width: 3.4rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.host-game-bar button {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+  border-color: #a33;
+  /* A light, warning-red tone reads fine on a dark stage but loses most of
+     its contrast against a light one - blending toward --paper (always
+     legible against --bg by construction, whichever direction the theme
+     goes) keeps the same warm-red hue while staying readable either way. */
+  color: color-mix(in srgb, #ff3b3b 55%, var(--paper));
+}
+
+.phase-badge {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+}
+
+.player-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* CoreSetPanel's per-pack delete list - a full corpus can be several
+   hundred packs, so it's capped and scrolls internally rather than
+   stretching the whole admin page. */
+.core-set-pack-list {
+  max-height: 320px;
+  overflow-y: auto;
+  margin-top: 0.5rem;
+}
+
+.core-set-packs input[type="search"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* The Table Lobby's own join list (left of the invite QR, TableLobbyView.tsx)
+   reuses .player-list/.player-row wholesale from the phone Lobby - scoped
+   bigger here rather than on the base rule, since this copy is read from
+   across a room while the phone one is held at arm's length. */
+.table-invite-hero .player-list {
+  gap: 0.6rem;
+  font-size: 1.7rem;
+}
+
+/* Same column, before anyone's joined - was plain small body text, same
+   fix as the player list right above it. */
+.invite-players-col > p.muted {
+  font-size: 1.2rem;
+}
+
+.final-score-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.15rem;
+  padding: 0.4rem 0;
+}
+
+.final-score-rank {
+  min-width: 1.8rem;
+  text-align: center;
+  font-size: 1.3rem;
+}
+
+.medal-gold {
+  color: #e8b923;
+}
+
+.medal-silver {
+  color: #c7cad1;
+}
+
+.medal-bronze {
+  color: #c9793f;
+}
+
+.final-score-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.final-score-value {
+  font-variant-numeric: tabular-nums;
+  color: #a9a8a2;
+}
+
+.game-end-summary h2 {
+  font-size: 1.6rem;
+  /* Same legibility scrim as .roundend-winner-name - the game-winner
+     headline sits directly on the page/scene background too. */
+  display: inline-block;
+  background: color-mix(in srgb, var(--paper) 15%, transparent);
+  padding: 0.3rem 0.9rem;
+  border-radius: 8px;
+}
+
+.round-history-panel {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.round-history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.round-history-list li {
+  border-bottom: 1px solid color-mix(in srgb, var(--paper) 8%, transparent);
+  padding-bottom: 0.6rem;
+}
+
+.round-history-list li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.round-history-black {
+  margin: 0 0 0.2rem;
+  color: #a9a8a2;
+  font-size: 0.85rem;
+}
+
+.round-history-winner {
+  margin: 0;
+}
+
+.tag {
+  font-size: 0.7rem;
+  background: color-mix(in srgb, var(--paper) 12%, transparent);
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+  margin-left: 0.4rem;
+}
+
+.tag.muted {
+  opacity: 0.5;
+}
+
+.muted {
+  opacity: 0.6;
+}
+
+.center-text {
+  text-align: center;
+}
+
+.error {
+  /* Same reasoning as .host-game-bar button above - a light red loses
+     contrast on a light stage, blending toward --paper keeps it legible
+     in either direction. */
+  color: color-mix(in srgb, #ff3b3b 55%, var(--paper));
+}
+
+.blocker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  background: rgba(255, 180, 0, 0.08);
+  border: 1px solid rgba(255, 180, 0, 0.3);
+  border-radius: 8px;
+  color: #e0ab5c;
+  font-size: 0.9rem;
+}
+
+.blocker-list li {
+  margin: 0.15rem 0;
+}
+
+.toast {
+  background: rgba(255, 0, 0, 0.1);
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+}
+
+/* Action Cards (see shared/src/actionCards.ts) - a hand card tagged with
+   actionCardId renders with this instead of the plain .hand-card look, so
+   it reads as "not a joke card" at a glance without a separate component.
+   Deliberately a background tint, not a border/outline - .hand-card.selected
+   uses an accent-colored outline, and an Action Card's marker needs to stay
+   visually distinct from "you have this selected to submit" at every point,
+   including right after backing out of the play panel without using it
+   (otherwise it reads as a stuck "still selected" state that never clears). */
+.hand-card.action-card {
+  background: color-mix(in srgb, var(--accent) 20%, var(--white-card-bg));
+  position: relative;
+}
+
+.action-card-badge {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  background: var(--accent);
+  color: var(--action-btn-fg);
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+.action-card-panel {
+  width: min(80vw, 480px);
+}
+
+.action-card-judging-note {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.action-card-toast {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.role-picker {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.pack-list {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+.pack-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--paper) 6%, transparent);
+}
+
+.pack-row-select {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.pack-row-select span:nth-child(2) {
+  flex: 1;
+}
+
+.pack-section {
+  margin-top: 0.6rem;
+}
+
+.pack-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: color-mix(in srgb, var(--paper) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--paper) 10%, transparent);
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.scoreboard {
+  /* Fixed, not sticky: a Table's content is often shorter than the
+     viewport (the whole point of its own auto-fit zoom), so a sticky bar
+     never actually gets anything to stick to there - it just sat wherever
+     it fell in normal flow. Fixed genuinely glues it to the screen edge on
+     both the Table and a phone. */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  /* .page's own isolation:isolate (see that rule, added for ThemeScene's
+     z-index:-1 trick) traps every descendant's stacking - including this
+     one - inside .page's local paint order. Without an explicit z-index,
+     a "fixed, z-index:auto" element only beats plain in-flow content; any
+     positioned descendant later in the DOM (a hand card with its own
+     position:relative for a hover/press effect, say) paints on top of it
+     once it scrolls into the same screen real estate, which is exactly
+     the "the bar is behind my cards, not in front of them" bug this
+     fixes. z-index:50 clears ordinary game content but stays under real
+     overlays (modals are 100, toasts 200). */
+  z-index: 50;
+  /* Was a flat #0e0e11/#333 - fine as "a bit darker than the stage" for
+     every dark theme so far, but a fixed dark bar against a light theme's
+     stage would read as a jarring, unthemed chrome strip rather than part
+     of the same page. --bg matches the stage itself; the border is what
+     actually separates the bar visually, same idea as a Material bottom
+     app bar. */
+  background: var(--bg);
+  border-top: 1px solid color-mix(in srgb, var(--paper) 20%, transparent);
+  padding: 0.6rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 0.8rem;
+}
+
+/* PlayerHandView's Submit/Draw/Trade-in row - was above the hand card
+   grid, so on a full hand you had to scroll back up to find it. Fixed
+   above .scoreboard, not a DOM sibling of it (it's nested deep inside
+   PlayerHandView), so it can't use the sticky-elements stacking trick -
+   Scoreboard.tsx measures its own live height (it can wrap into several
+   rows for a full table) into --scoreboard-height instead. Same explicit
+   z-index as .scoreboard, and for the same reason (see that rule). */
+.submit-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--scoreboard-height, 0px);
+  z-index: 50;
+  background: var(--bg);
+  border-top: 1px solid color-mix(in srgb, var(--paper) 20%, transparent);
+  padding: 0.6rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.score-chip {
+  font-size: calc(0.85rem * var(--scoreboard-scale, 1));
+}
+
+.player-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  /* Without this, content overflows sideways rather than wrapping once a
+     row is narrower than its content needs - previously only a risk on a
+     narrow phone, now also reachable on desktop since .dashboard's
+     multi-column layout puts each row in a ~420px column, not a full-width
+     900px+ one. */
+  flex-wrap: wrap;
+}
+
+.player-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.player-actions button {
+  font-size: 0.78rem;
+  padding: 0.35rem 0.6rem;
+}
+
+.theme-btn {
+  text-align: left;
+}
+
+.theme-btn.selected {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+}
+
+.swatch-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  padding: 0;
+  border: 2px solid transparent;
+}
+
+.swatch-btn.selected {
+  border-color: white;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+.invite-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.invite-qr {
+  width: 140px;
+  height: 140px;
+  border-radius: 8px;
+  background: white;
+  padding: 6px;
+}
+
+.invite-link {
+  font-size: 0.82rem;
+  word-break: break-all;
+  color: #a9a8a2;
+}
+
+/* Judging board: face-down cards that shuffle and flip on tap */
+.judging-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.9rem;
+}
+
+/* Parlour: a real hand of cards, fanned and overlapping, instead of a grid
+   of tiles - see JudgingBoard.tsx (this theme skips the dynamic fill-sizing
+   path entirely, since rotation/overlap don't compose with that box-packing
+   math). The rotation targets .flip-card, not .judging-slot itself, so it
+   composes cleanly with .flip-card-inner's own separate rotateY() flip
+   transform rather than fighting it on the same element, and Framer
+   Motion's `layout` animation (which writes its own inline transform on
+   .judging-slot) never gets overridden. Cycles every 5 cards, same as the
+   design mockup - Parlour forces Spotlight on, so the ambient fan is meant
+   to be atmosphere, not something that needs to individually read at any
+   card count. */
+.judging-grid.parlour-fan {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 1.4rem clamp(-1.1rem, -0.6vw, -0.4rem);
+  padding-bottom: 0.6rem;
+}
+.judging-grid.parlour-fan .judging-slot {
+  width: clamp(130px, 13vw, 190px);
+  flex: none;
+}
+.judging-grid.parlour-fan .flip-card {
+  transition: transform 0.2s ease;
+}
+.judging-grid.parlour-fan .judging-slot:nth-child(5n + 1) .flip-card {
+  transform: rotate(-7deg) translateY(6px);
+}
+.judging-grid.parlour-fan .judging-slot:nth-child(5n + 2) .flip-card {
+  transform: rotate(-3deg) translateY(-4px);
+}
+.judging-grid.parlour-fan .judging-slot:nth-child(5n + 3) .flip-card {
+  transform: rotate(1deg) translateY(8px);
+  position: relative;
+  z-index: 2;
+}
+.judging-grid.parlour-fan .judging-slot:nth-child(5n + 4) .flip-card {
+  transform: rotate(4deg) translateY(-2px);
+}
+.judging-grid.parlour-fan .judging-slot:nth-child(5n) .flip-card {
+  transform: rotate(8deg) translateY(6px);
+}
+
+.judging-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.flip-card {
+  perspective: 1000px;
+  min-height: 130px;
+  cursor: pointer;
+}
+
+.flip-card.read-only {
+  cursor: default;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 130px;
+  transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+/* Pick-2/3 lineups stack multiple ordered lines in one card - the box
+   needs proportionally more room, not just smaller text, or it still
+   overflows. .flip-card-face is absolutely positioned (needed for the
+   3D flip), which means its content can never influence .flip-card's own
+   height, so this has to be set explicitly per pick count instead of
+   letting content decide it naturally. */
+.judging-slot.pick-2 .flip-card,
+.judging-slot.pick-2 .flip-card-inner {
+  min-height: 170px;
+}
+
+.judging-slot.pick-3 .flip-card,
+.judging-slot.pick-3 .flip-card-inner {
+  min-height: 215px;
+}
+
+.flip-card.flipped .flip-card-inner {
+  transform: rotateY(180deg);
+  cursor: default;
+}
+
+.flip-card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: var(--card-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.flip-card-back {
+  background: var(--card-back-pattern);
+  border: 2px solid #363540;
+  /* Lets a theme's glow/scene background show through a not-yet-revealed
+     card instead of always being fully hidden behind it - --facedown-
+     opacity is set inline on .page from TableStyle.facedownOpacity. */
+  opacity: var(--facedown-opacity, 1);
+  transition: opacity 0.15s ease;
+}
+
+.card-back-mark {
+  font-size: 2.2rem;
+  font-weight: 800;
+  opacity: 0.55;
+  color: white;
+}
+
+.flip-card-front {
+  transform: rotateY(180deg);
+  align-items: flex-start;
+  flex-direction: column;
+  text-align: left;
+  overflow-y: auto;
+}
+
+/* Each line of a pick-2/3 lineup, numbered so the order that changes the
+   joke stays visible (see CLAUDE.md: sequence is preserved and matters) -
+   shared between the grid card face and the spotlight overlay. */
+.lineup-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4em;
+  margin: 0 0 0.4em;
+  line-height: 1.25;
+}
+
+.lineup-line:last-child {
+  margin-bottom: 0;
+}
+
+.lineup-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3em;
+  height: 1.3em;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--action-btn-fg);
+  font-size: 0.68em;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.pick-winner-btn {
+  width: 100%;
+  background: #2a2f1e;
+  border-color: #e0ab5c;
+  color: #e0ab5c;
+  border-radius: var(--card-radius);
+  clip-path: var(--action-btn-clip);
+}
+
+.pick-winner-btn.voted {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--action-btn-fg);
+}
+
+.score-chip.czar {
+  color: #e0ab5c;
+}
+
+.score-chip.muted {
+  opacity: 0.4;
+}
+
+/* Spotlight: tapping a card brings it forward, large, with the black card
+   pinned above so the Czar never loses track of what they're judging
+   against. Shares the same theme tokens as everything else, so it inherits
+   whichever Table style (or the default phone look, on the Czar's own
+   phone) is active without any extra wiring. */
+.spotlight-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 2rem;
+  overflow: auto;
+}
+
+/* Host-adjustable size (see Room.spotlightScale / the Lobby's "Spotlight
+   size" slider) - scaling this wrapper rather than each child keeps the
+   prompt/card/actions group resizing as one unit, still centered. */
+.spotlight-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  transform: scale(var(--spotlight-scale, 1));
+}
+
+.spotlight-prompt {
+  width: min(80vw, 720px);
+  color: var(--paper);
+  font-family: var(--display-font);
+  font-weight: var(--display-weight);
+  text-transform: var(--card-black-transform);
+  font-size: clamp(1.1rem, 2.2vw, 1.7rem);
+  line-height: 1.2;
+  background: var(--bg);
+  border: 2px solid var(--accent);
+  border-radius: var(--card-radius);
+  padding: 0.9rem 1.4rem;
+  margin: 0;
+}
+
+.spotlight-card {
+  width: min(80vw, 720px);
+  max-height: 52vh;
+  overflow: auto;
+  box-shadow: 0 40px 90px -20px rgba(0, 0, 0, 0.6);
+}
+
+.spotlight-card p {
+  margin: 0 0 0.6rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.spotlight-actions {
+  display: flex;
+  gap: 0.9rem;
+}
+
+.spotlight-pick {
+  background: var(--accent);
+  color: var(--action-btn-fg);
+  font-weight: 700;
+  border-radius: var(--card-radius);
+  clip-path: var(--action-btn-clip);
+}
+
+.spotlight-back {
+  background: transparent;
+  border-radius: var(--card-radius);
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+/* Big, distance-readable invite for the Table's pre-game screen. */
+.invite-qr.large {
+  width: 320px;
+  height: 320px;
+}
+
+.invite-link.large {
+  font-size: 1.1rem;
+}
+
+.table-invite-hero {
+  text-align: center;
+}
+
+.table-room-code {
+  font-family: var(--display-font);
+  font-weight: var(--display-weight);
+  letter-spacing: 0.1em;
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  margin: 0 0 1rem;
+}
+
+/* Table's Invite panel, large variant: QR on the left, the House
+   Rules/Settings summary filling the space beside it, link+Copy button
+   below spanning both - see RulesSummaryPanel.tsx and InvitePanel.tsx. */
+.invite-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2.5rem;
+  margin-bottom: 1.4rem;
+  text-align: left;
+}
+
+/* The joined-players roster, left of the QR (mirroring the Settings summary
+   on the right) - was its own full-width panel stacked below the invite
+   hero, which on a full table could grow tall enough to push the whole
+   Lobby page past the screen. Capped to the same ~320px the QR/Settings
+   column already budgets for, with its own scroll once it's fuller than
+   that, rather than growing the row (and the page) to fit everyone. */
+.invite-players-col {
+  min-width: 200px;
+  max-width: 280px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.invite-top-row .invite-qr.large {
+  flex-shrink: 0;
+}
+
+.invite-link-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.rules-col {
+  min-width: 340px;
+  max-width: 520px;
+  padding-top: 0.3rem;
+}
+
+/* Native CSS multi-column flow, not a manual two-column split: with few
+   active rules, House Rules fills column 1 and Settings starts at the top
+   of column 2 (height roughly matches the QR so the row stays visually
+   balanced); with enough rules to overflow that height, they spill into
+   column 2 and push Settings down - column-fill:auto is what makes it
+   fill-then-overflow instead of the default balanced/equal-height split. */
+.rules-columns {
+  columns: 2;
+  column-fill: auto;
+  height: 380px;
+  column-gap: 1.75rem;
+}
+
+.rules-panel-subhead {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #8b8994;
+  margin: 0.7rem 0 0.4rem;
+  break-inside: avoid;
+}
+
+.rules-panel-subhead:first-child {
+  margin-top: 0;
+}
+
+/* Legibility from across the room is the whole point of this panel - the
+   icon and the rule name read at a glance; the detail (seconds, a
+   percentage, a count) sits on its own line right underneath at
+   near-full contrast, not crammed inline in dim small text where it's
+   the first thing to become unreadable at a distance. */
+.rules-panel-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.45rem 0.7rem;
+  margin-bottom: 0.4rem;
+  background: color-mix(in srgb, var(--paper) 4%, transparent);
+  border-left: 3px solid var(--accent);
+  break-inside: avoid;
+}
+
+.rules-panel-row .icon {
+  font-size: 1.5rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.rules-panel-row .text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.rules-panel-row .name {
+  font-weight: 700;
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.rules-panel-row .detail {
+  color: color-mix(in srgb, var(--paper) 80%, transparent);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.rules-panel-row.setting-row {
+  border-left-color: color-mix(in srgb, var(--paper) 30%, transparent);
+  background: transparent;
+}
+
+.rules-panel-row.setting-row .icon {
+  color: var(--paper);
+  opacity: 0.85;
+}
+
+/* Standalone Template Editor: a dedicated design-tool chrome, ported
+   directly from docs/mockups/table-style-picker.html so the real editor
+   keeps that mockup's visual identity (its own dark palette, a fixed
+   control rail, pill-shaped theme options with dot-rows, custom sliders)
+   instead of inheriting the phone-app's plain Lobby styling. Scoped under
+   .editor-page so none of this leaks into the rest of the app. */
+.editor-page {
+  --ui-bg: #141414;
+  --ui-panel: #1c1c1c;
+  --ui-rule: #2e2e2e;
+  --ui-ink: #f0f0ec;
+  --ui-ink-soft: #9a9a9a;
+  --ui-accent: #d8d8d4;
+  --ui-accent-fg: #141414;
+  --ui-option-bg: #232323;
+  --ui-option-bg-selected: #2a2a2a;
+  max-width: none;
+  padding: 0;
+  margin: 0;
+  background: var(--ui-bg);
+  color: var(--ui-ink);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Desktop only: capping the whole page to exactly one viewport is what
+   makes .editor-rail's internal overflow-y:auto actually engage - see the
+   .editor-layout comment below for the full reasoning. Mobile stays
+   uncapped, natural-height, normal-page-scroll (its layout stacks rail
+   then stage in one column instead of side-by-side). */
+@media (min-width: 901px) {
+  .editor-page {
+    height: 100vh;
+    overflow: hidden;
+  }
+}
+
+/* A real top bar (Back + title), structurally consistent with every other
+   page's .room-header, instead of a small bordered button buried at the
+   top of the settings rail - this page's chrome deliberately stays on its
+   own dark --ui-* palette rather than the app's themed tokens (see the
+   comment above .editor-page) so a header living in this same file keeps
+   that consistency without fighting whatever theme is being edited below. */
+.editor-header {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1.5rem;
+  border-bottom: 1px solid var(--ui-rule);
+  background: var(--ui-panel);
+  flex-shrink: 0;
+}
+.editor-header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.editor-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  min-height: 100vh;
+  transition: grid-template-columns 0.18s ease;
+}
+
+/* Desktop only: .editor-page becomes a fixed-height flex column (header +
+   this layout filling the rest) below, and this needs flex:1/min-height:0
+   to actually fill only the remaining space rather than growing to fit
+   its tallest child. Without a rigid cap somewhere, a grid row grows to
+   fit its tallest item (the rail's long control list, routinely taller
+   than one viewport), and .editor-stage's centered preview then centers
+   itself inside that oversized box instead of the visible viewport,
+   pushing the preview below the fold with a wall of empty space above it.
+   Scoped to desktop because the mobile layout below stacks rail-then-stage
+   in one column and should scroll as one normal page, not be clipped to
+   one viewport height with two independent inner scrollbars. */
+@media (min-width: 901px) {
+  .editor-layout {
+    flex: 1;
+    min-height: 0;
+  }
+}
+
+/* Collapsed to a slim strip (not display:none) - the preview grows into
+   the freed width without needing "Open in a real window" for a bigger
+   look, and the toggle itself stays reachable to expand it again. Every
+   other rail child hides via the sibling rule below rather than the rail
+   itself, so its own background/border (the visual edge between rail and
+   stage) survives collapse. */
+.editor-layout.rail-collapsed {
+  grid-template-columns: 44px 1fr;
+}
+.editor-layout.rail-collapsed .editor-rail {
+  padding: 1.6rem 0.5rem;
+}
+.editor-layout.rail-collapsed .editor-rail > *:not(.editor-rail-toggle) {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .editor-layout {
+    grid-template-columns: 1fr;
+  }
+  .editor-layout.rail-collapsed {
+    grid-template-columns: 1fr;
+  }
+}
+
+.editor-rail {
+  background: var(--ui-panel);
+  border-right: 1px solid var(--ui-rule);
+  padding: 1.6rem 1.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.8rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Grid items default to min-height:auto (effectively "never shrink
+     below content size"), which would silently cancel the height:100vh
+     cap above and let this grow tall again. */
+  min-height: 0;
+}
+
+.editor-rail-toggle {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--ui-rule);
+  color: var(--ui-ink-soft);
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.editor-rail-toggle:hover {
+  color: var(--ui-ink);
+  border-color: var(--ui-ink-soft);
+}
+
+.editor-rail .sub {
+  color: var(--ui-ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.editor-back-btn {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--ui-rule);
+  color: var(--ui-ink-soft);
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.editor-back-btn:hover {
+  color: var(--ui-ink);
+  border-color: var(--ui-ink-soft);
+}
+
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.editor-field .field-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-ink-soft);
+}
+
+.editor-field .field-note {
+  font-size: 0.76rem;
+  color: var(--ui-ink-soft);
+  margin: 0;
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: var(--ui-option-bg);
+  border: 1.5px solid var(--ui-rule);
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+  text-align: left;
+  color: var(--ui-ink);
+  font-family: inherit;
+  width: 100%;
+}
+
+.theme-option + .theme-option {
+  margin-top: 0.6rem;
+}
+
+.theme-option.selected {
+  border-color: var(--ui-accent);
+  background: var(--ui-option-bg-selected);
+}
+
+.theme-option .dot-row {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.theme-option .dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.theme-option .option-name {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.theme-option .option-desc {
+  color: var(--ui-ink-soft);
+  font-size: 0.74rem;
+  margin-top: 0.1rem;
+}
+
+.layout-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: left;
+  background: var(--ui-option-bg);
+  border: 1.5px solid var(--ui-rule);
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+  color: var(--ui-ink);
+  font-family: inherit;
+  width: 100%;
+}
+
+.layout-option + .layout-option {
+  margin-top: 0.6rem;
+}
+
+.layout-option.selected {
+  border-color: var(--ui-accent);
+  background: var(--ui-option-bg-selected);
+}
+
+.layout-option strong {
+  font-size: 0.9rem;
+}
+
+.layout-option span {
+  font-size: 0.76rem;
+  color: var(--ui-ink-soft);
+  line-height: 1.4;
+}
+
+.swatch-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.swatch {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+}
+
+.swatch.selected {
+  border-color: var(--ui-ink);
+  box-shadow: 0 0 0 2px var(--ui-bg);
+}
+
+.swatch .check {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.8rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.pick-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pick-btn {
+  flex: 1;
+  background: var(--ui-option-bg);
+  border: 1.5px solid var(--ui-rule);
+  border-radius: 8px;
+  color: var(--ui-ink-soft);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.5rem 0;
+  cursor: pointer;
+}
+
+.pick-btn.selected {
+  border-color: var(--ui-accent);
+  color: var(--ui-ink);
+  background: var(--ui-option-bg-selected);
+}
+
+/* First-run warning on the home page: this server still has no admin
+   password, and whoever sets one first owns it. Deliberately loud - it's
+   the one thing an operator must act on before sharing the address. */
+.setup-warning {
+  /* Same red family as .error above; this stylesheet has no semantic
+     colour tokens, so it's stated literally rather than inventing one. */
+  border: 1px solid #ff8a8a;
+  background: rgba(255, 138, 138, 0.1);
+  text-align: left;
+}
+
+/* Category filter chips (Lobby's pack picker, Card Management's preset
+   builder) - a variable-length list of dynamic section names, so unlike
+   .pick-btn (a fixed pair that should stretch to fill its row equally)
+   these size to their own label and wrap onto additional rows as needed. */
+.filter-chip {
+  background: var(--ui-option-bg);
+  border: 1.5px solid var(--ui-rule);
+  border-radius: 999px;
+  color: var(--ui-ink-soft);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+
+.filter-chip.selected {
+  border-color: var(--ui-accent);
+  color: var(--ui-ink);
+  background: var(--ui-option-bg-selected);
+}
+
+.toggle-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+  color: var(--ui-ink);
+}
+
+.toggle-field input {
+  accent-color: var(--ui-accent);
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.slider-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--ui-accent);
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.slider-val {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+  color: var(--ui-ink-soft);
+  width: 3.2rem;
+  text-align: right;
+}
+
+.editor-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.editor-preset-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: var(--ui-option-bg);
+  border: 1.5px solid var(--ui-rule);
+  border-radius: 8px;
+  padding: 0.3rem 0.3rem 0.3rem 0.7rem;
+}
+
+.editor-preset-row button:first-child {
+  background: none;
+  border: none;
+  color: var(--ui-ink);
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.3rem 0;
+  cursor: pointer;
+  text-align: left;
+  flex: 1;
+}
+
+.editor-preset-row button:last-child {
+  background: none;
+  border: none;
+  color: var(--ui-ink-soft);
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+}
+
+.editor-save-btn {
+  background: var(--ui-accent);
+  color: var(--ui-accent-fg);
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  align-self: flex-start;
+}
+
+.editor-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.4rem;
+  overflow: auto;
+  gap: 0.6rem;
+  min-height: 0;
+}
+
+.editor-stage-header {
+  width: min(100%, 1760px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.editor-stage-label {
+  font-size: 0.76rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ui-ink-soft);
+  margin: 0;
+}
+
+.editor-popout-btn {
+  background: var(--ui-accent);
+  color: var(--ui-accent-fg);
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* The dedicated popout window: the preview fills the whole real window
+   instead of a bounded frame inside the editor's rail layout. */
+.editor-preview-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  background: #0a0a0a;
+}
+
+/* The frame's own border is a thin 1px - the "massive border" this used to
+   read as was really the surrounding .editor-stage padding plus a 1180px
+   cap leaving a lot of dead space on anything wider than a laptop screen.
+   Both raised: 1760px sits just under the real Table's own 1800px ceiling
+   (.page.role-table), and the collapsible rail (see
+   .editor-layout.rail-collapsed) frees another ~300px on top of that when
+   it's tucked away. */
+.editor-preview-frame {
+  width: min(100%, 1760px);
+  height: 82vh;
+  min-height: 420px;
+  overflow: auto;
+  border-radius: 18px;
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.7);
+  border: 1px solid #000;
+  background: #0a0a0a;
+}
+
+/* .page.role-table's own max-width is `min(96vw, 1800px)` - correct for
+   the real Table, wrong here: `vw` measures the actual browser viewport,
+   completely ignoring that this copy of it is nested inside a much
+   smaller bounded frame (or, in the popout window, a window that isn't
+   necessarily anywhere near 1800px itself). Without this override the
+   preview tried to lay out at up to 1800px wide regardless of the frame's
+   real size, so only a small, mostly-empty corner of that oversized
+   render was ever visible - reading as "the preview is tiny" when the
+   actual problem was the opposite: the rendered content was oversized for
+   its box. Sizing to the container it's actually in fixes both frames. */
+.editor-preview-frame .page.role-table,
+.editor-preview-fullscreen .page.role-table {
+  max-width: 100%;
+}
+
+/* The real Scoreboard uses position:fixed so it's always visible on a
+   phone/Table screen. Inside the editor's bounded, scrollable preview
+   frame that would escape to the real browser window instead — sticky
+   keeps the same "always visible" feel scoped to the frame itself. */
+.editor-preview-frame .scoreboard {
+  position: sticky;
+}
+
+/* Shared Screen judging shell: Dense Grid / Command Strip layouts. Table-
+   only (see RoomPage's state.you.role === "table" gate) - wraps the real
+   JudgingBoard/Scoreboard components in new chrome, never reimplements
+   them, so shuffle/flip/spotlight/pick and the Scoreboard's own markup
+   are all reused unmodified. */
+.table-judging-shell {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dense Grid */
+.layout-dense {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+.dense-sidebar {
+  background: color-mix(in srgb, var(--bg) 85%, black);
+  padding: 1.2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-right: 1px solid color-mix(in srgb, var(--paper) 12%, transparent);
+  overflow-y: auto;
+}
+
+.dense-sidebar h3 {
+  font-family: var(--display-font);
+  text-transform: var(--card-black-transform);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--paper) 55%, transparent);
+  margin: 0 0 0.4rem;
+}
+
+/* Reuses the real Scoreboard component's own markup verbatim - this just
+   repositions it from its default fixed bottom footer into a static,
+   vertically-stacked in-flow sidebar list (same technique already used by
+   .editor-preview-frame .scoreboard above, just for a vertical list
+   instead of a sticky horizontal strip). */
+.dense-sidebar .scoreboard {
+  position: static;
+  background: none;
+  border-top: none;
+  padding: 0;
+  flex-direction: column;
+  overflow-x: visible;
+  white-space: normal;
+}
+
+.dense-sidebar .score-chip {
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--paper) 8%, transparent);
+}
+
+.dense-main {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.2rem;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.dense-main .stack {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.dense-main .card-black {
+  flex-shrink: 0;
+  margin-bottom: 0.6rem;
+}
+
+.dense-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+  flex-shrink: 0;
+}
+
+.status-pill {
+  font-family: var(--display-font);
+  font-weight: 800;
+  text-transform: var(--card-black-transform);
+  background: color-mix(in srgb, var(--accent) 22%, var(--bg));
+  color: var(--paper);
+  border-radius: 999px;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.85rem;
+  display: inline-block;
+}
+
+/* Stayed flat at the phone size everywhere, including the Shared Screen,
+   while the room code/phase text/black card all get bigger there - the
+   one piece of ambient status text on the board that never got a Table
+   pass. */
+.page.role-table .status-pill {
+  font-size: 1.25rem;
+  padding: 0.4rem 1.1rem;
+}
+
+/* Command Strip */
+.layout-strip {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.strip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1.4rem;
+  background: color-mix(in srgb, var(--bg) 85%, black);
+  border-bottom: 1px solid color-mix(in srgb, var(--paper) 12%, transparent);
+  flex-shrink: 0;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.strip-avatars {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.strip-avatar {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: color-mix(in srgb, var(--paper) 15%, transparent);
+  color: color-mix(in srgb, var(--paper) 60%, transparent);
+}
+
+.strip-avatar.done {
+  background: var(--accent);
+  color: white;
+}
+
+.strip-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.4rem;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.strip-body .stack {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.strip-body .card-black {
+  max-width: 80%;
+  margin: 0 auto 1.1rem;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+/* Dynamic space-filling grid (ported from docs/mockups/table-layouts.html's
+   computeFit/fillGrid, see client/src/useFillGrid.ts): the outer .fill-grid
+   is a plain ResizeObserver-measured box that centers whatever size the
+   inner .judging-grid computes out to - fewer submissions render bigger,
+   more shrink to fit, never past a legibility floor (fillGrid falls back
+   to .scrolling instead of continuing to shrink). */
+.fill-grid {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 0;
+  width: 100%;
+}
+
+.fill-grid.scrolling {
+  align-items: flex-start;
+  overflow-y: auto;
+}
+
+.judging-grid.fill-sized .flip-card,
+.judging-grid.fill-sized .flip-card-inner {
+  min-height: 0;
+  height: var(--fill-card-h, 130px);
+}
+
+/* Pack content preview modal - same fixed-backdrop/click-outside-to-close
+   convention as .spotlight-backdrop, sized for genuine content browsing
+   (a scrollable two-column card list) rather than a compact spotlight. */
+.pack-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 2rem;
+}
+
+.pack-preview-panel {
+  width: min(90vw, 900px);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  box-shadow: 0 40px 90px -20px rgba(0, 0, 0, 0.6);
+}
+
+.pack-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem 1.2rem;
+  gap: 1rem;
+}
+
+.pack-preview-header h3 {
+  margin: 0 0 0.2rem;
+}
+
+.pack-preview-actions {
+  padding: 0 1.2rem 0.8rem;
+}
+
+.pack-preview-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  overflow: hidden;
+  flex: 1;
+  padding: 0 1.2rem 1.2rem;
+}
+
+.pack-preview-column {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.pack-preview-column h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+.pack-preview-column ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pack-preview-column li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.pack-preview-exclude-hint {
+  padding: 0 1.2rem 0.6rem;
+}
+
+.exclude-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+
+.prompt-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1.5rem;
+}
+
+.prompt-modal-panel {
+  width: min(90vw, 360px);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--card-radius);
+  padding: 1.4rem;
+  box-shadow: 0 40px 90px -20px rgba(0, 0, 0, 0.6);
+}
+
+.prompt-modal-panel h3 {
+  margin: 0;
+}
+
+.prompt-modal-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.prompt-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.exclude-toggle.excluded {
+  text-decoration: line-through;
+  opacity: 0.45;
+}
+
+@media (max-width: 640px) {
+  .pack-preview-columns {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .pack-preview-column {
+    overflow-y: visible;
+  }
+}
+
+/* Per-card Action Card frequency (ActionCardTierPanel). Nine rows of
+   controls inside an already-long Lobby, so the list is kept compact and
+   the tier picker sized for thumbs on a phone rather than a mouse. */
+.action-card-tiers {
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--paper) 5%, transparent);
+}
+
+.action-card-tiers-head {
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+
+.action-card-tier-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tier-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--paper) 10%, transparent);
+}
+
+.tier-row:last-child {
+  border-bottom: none;
+}
+
+/* An off card stays readable but visibly demoted, so scanning the list
+   shows what's in play without reading every picker. */
+.tier-row.is-off .tier-name,
+.tier-row.is-off .tier-desc {
+  opacity: 0.45;
+}
+
+.tier-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  flex: 1 1 12rem;
+}
+
+.tier-name {
+  font-weight: 700;
+}
+
+.tier-desc {
+  font-size: 0.85rem;
+}
+
+.tier-picker {
+  display: inline-flex;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--paper) 20%, transparent);
+}
+
+.tier-picker .tier-btn {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  min-width: 3.6rem;
+}
+
+.tier-picker .tier-btn + .tier-btn {
+  border-left: 1px solid color-mix(in srgb, var(--paper) 20%, transparent);
+}
+
+.tier-picker .tier-btn.selected {
+  background: var(--accent);
+  color: #10100f;
+  font-weight: 700;
+}
+
+.action-card-weights {
+  margin-top: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* Shown when the Personal Cards window collapses to its grace period -
+   the countdown drops sharply at that moment, so this needs to read as a
+   deliberate "everyone's done" rather than a glitch. */
+.everyone-done-note {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Release notes at the foot of the home page. Left-aligned against the
+   otherwise centred home page, because these are read as a list rather
+   than scanned as a heading. */
+.changelog {
+  text-align: left;
+  max-width: 44rem;
+}
+
+.changelog-entry + .changelog-entry {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid color-mix(in srgb, var(--paper) 12%, transparent);
+}
+
+.changelog-date {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--paper) 60%, transparent);
+  margin: 0 0 0.6rem;
+}
+
+.changelog-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.changelog-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+}
+
+/* Fixed width so the text of every row starts on the same left edge,
+   regardless of which tag it carries. */
+.changelog-tag {
+  flex: 0 0 auto;
+  width: 4.6rem;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0;
+  border-radius: 4px;
+  line-height: 1.5;
+}
+
+.changelog-tag.tag-new {
+  background: var(--accent);
+  color: #10100f;
+}
+
+.changelog-tag.tag-improved {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--paper);
+}
+
+.changelog-tag.tag-fixed {
+  background: color-mix(in srgb, var(--paper) 14%, transparent);
+  color: color-mix(in srgb, var(--paper) 75%, transparent);
+}
+
+.changelog-text {
+  line-height: 1.45;
+}
+
+/* Shown when the host has dropped and the room may need someone to take
+   over. Accent-bordered because it's actionable and easy to miss otherwise
+   in the middle of a round. */
+.host-claim-notice {
+  border: 2px solid var(--accent);
+  text-align: center;
+}
+
+/* Collapsible Lobby sections (SettingsSection). The Lobby had grown to
+   ~5 phone screens of always-open controls with Start Game stranded at the
+   bottom; collapsing puts it back above the fold. */
+.settings-section {
+  background: var(--panel-bg, color-mix(in srgb, var(--paper) 6%, transparent));
+  border: 1px solid color-mix(in srgb, var(--paper) 12%, transparent);
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+
+.settings-section > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.settings-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-section > summary:hover .settings-section-title {
+  color: var(--accent);
+}
+
+.settings-section > summary .chev {
+  flex: none;
+  color: color-mix(in srgb, var(--paper) 55%, transparent);
+  transition: transform 0.15s ease;
+}
+
+.settings-section[open] > summary .chev {
+  transform: rotate(90deg);
+}
+
+.settings-section-title {
+  font-weight: 700;
+}
+
+/* Pushed right and allowed to shrink: a collapsed section still has to say
+   what's inside it, or hiding it just trades scrolling for guessing. */
+.settings-section-summary {
+  margin-left: auto;
+  text-align: right;
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--paper) 62%, transparent);
+  min-width: 0;
+}
+
+.settings-section-body {
+  padding: 0.75rem 0.85rem 0.85rem;
+  border-top: 1px solid color-mix(in srgb, var(--paper) 12%, transparent);
+}
+
+/* Last look before Start Game, so the host doesn't have to reopen every
+   section to confirm what they set. */
+.changes-summary {
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.changes-summary-head {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  font-weight: 800;
+  margin: 0 0 0.25rem;
+}
+
+/* Quick setup: whole-game configurations in one tap. Cards rather than a
+   chip row, because the description is what makes them choosable - a bare
+   name like "Chaos" doesn't tell you what you're agreeing to. */
+.setup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.5rem;
+  margin: 0.6rem 0 0.75rem;
+}
+
+.setup-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  text-align: left;
+  padding: 0.6rem 0.7rem;
+  height: 100%;
+}
+
+.setup-card .setup-name {
+  font-weight: 700;
+}
+
+.setup-card .setup-desc {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--paper) 62%, transparent);
+  line-height: 1.35;
+}
+
+/* Shown whenever the socket is down. Without it a dropped connection looks
+   identical to a game where nobody is doing anything - which is exactly
+   how a desync gets mistaken for the game being broken. */
+.connection-banner {
+  background: color-mix(in srgb, #d98324 22%, transparent);
+  border: 1px solid color-mix(in srgb, #d98324 60%, transparent);
+  color: var(--paper);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin: 0 0 0.6rem;
+  font-weight: 600;
+}
+
+/* Admin sign-in for the shared card library. */
+.admin-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.admin-bar.signed-in {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* Locked reads as a warning, not a decoration: it means nobody can edit,
+   which is usually a misconfiguration rather than an intention. */
+.admin-bar.locked {
+  border: 1px solid color-mix(in srgb, #d98324 55%, transparent);
+  background: color-mix(in srgb, #d98324 10%, transparent);
+}

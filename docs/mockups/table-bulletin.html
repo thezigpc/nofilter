@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Table Mockup — Bulletin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --stage: #0a0a0c;
+    --panel: #131316;
+    --card-black-bg: #000000;
+    --card-black-fg: #f5f5f5;
+    --card-white-bg: #eceae3;
+    --card-white-fg: #0a0a0c;
+    --amber: #ffb020;
+    --amber-dim: rgba(255, 176, 32, 0.14);
+    --ink: #f2f2f0;
+    --ink-soft: #767680;
+    --rule: #232327;
+    --live: #35d17a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--stage);
+    color: var(--ink);
+    font-family: "IBM Plex Mono", monospace;
+  }
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 42px 42px;
+  }
+  .display { font-family: "Big Shoulders Display", sans-serif; }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem clamp(1.5rem, 3vw, 3rem);
+    border-bottom: 3px solid var(--amber);
+    background: var(--panel);
+  }
+  .topbar .left { display: flex; align-items: center; gap: 1rem; }
+  .live-dot {
+    width: 0.55rem; height: 0.55rem; border-radius: 50%;
+    background: var(--live);
+    box-shadow: 0 0 10px var(--live);
+  }
+  .room-code {
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    font-size: clamp(1.1rem, 1.6vw, 1.4rem);
+  }
+  .table-pill {
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    padding: 0.25rem 0.6rem;
+  }
+  .phase-tag {
+    font-family: "Big Shoulders Display", sans-serif;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+    color: var(--stage);
+    background: var(--amber);
+    padding: 0.3rem 1.1rem 0.15rem;
+  }
+
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(1.5rem, 3vw, 3rem);
+    gap: clamp(1.6rem, 3vw, 2.8rem);
+  }
+
+  .board-label {
+    font-family: "Big Shoulders Display", sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber);
+    font-size: clamp(0.85rem, 1.1vw, 1rem);
+  }
+
+  .black-card {
+    width: 100%;
+    max-width: 1500px;
+    text-align: center;
+    background: var(--card-black-bg);
+    border: 3px solid var(--amber);
+    padding: clamp(1.6rem, 3.5vw, 3rem) clamp(1.6rem, 4vw, 3.5rem);
+  }
+  .black-card p {
+    margin: 0;
+    font-family: "Big Shoulders Display", sans-serif;
+    font-weight: 800;
+    line-height: 1.05;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    text-wrap: balance;
+    font-size: clamp(2.4rem, 5.4vw, 5.2rem);
+    color: var(--card-black-fg);
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 1.4rem;
+  }
+  .shuffle-btn {
+    font-family: "Big Shoulders Display", sans-serif;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: clamp(1.1rem, 1.6vw, 1.4rem);
+    color: var(--stage);
+    background: var(--amber);
+    border: none;
+    padding: 0.7rem 2.4rem 0.55rem;
+    clip-path: polygon(6% 0, 100% 0, 94% 100%, 0 100%);
+  }
+  .hint {
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    letter-spacing: 0.02em;
+  }
+
+  .hand {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: clamp(0.9rem, 1.4vw, 1.4rem);
+    width: 100%;
+    max-width: 1500px;
+  }
+  .slot {
+    aspect-ratio: 4 / 5;
+    border: 2px solid var(--rule);
+    position: relative;
+  }
+  .slot .idx {
+    position: absolute;
+    top: 0.5rem; left: 0.6rem;
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    letter-spacing: 0.1em;
+  }
+  .slot.back {
+    background: repeating-linear-gradient(135deg, #141416, #141416 10px, #1a1a1d 10px, #1a1a1d 20px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .slot.back::after {
+    content: "LOCKED";
+    font-family: "Big Shoulders Display", sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    font-size: clamp(0.8rem, 1.1vw, 1rem);
+    color: #3a3a40;
+  }
+  .slot.front {
+    background: var(--card-white-bg);
+    color: var(--card-white-fg);
+    padding: clamp(1.6rem, 2vw, 2rem) clamp(0.9rem, 1.3vw, 1.2rem) 0.9rem;
+    display: flex;
+    align-items: flex-start;
+  }
+  .slot.front p {
+    margin: 0;
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 600;
+    line-height: 1.32;
+    font-size: clamp(0.95rem, 1.35vw, 1.2rem);
+  }
+  .slot.front.winner {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 3px var(--amber);
+  }
+  .winner .idx { color: var(--amber); }
+  .winner .idx::after { content: " ★ WINNER"; }
+
+  .scoreboard {
+    display: flex;
+    border-top: 3px solid var(--amber);
+    background: var(--panel);
+  }
+  .scoreboard .cell {
+    flex: 1;
+    text-align: center;
+    padding: 0.9rem 0.5rem 1rem;
+    border-right: 1px solid var(--rule);
+  }
+  .scoreboard .cell:last-child { border-right: none; }
+  .scoreboard .name {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 0.3rem;
+  }
+  .scoreboard .name.czar { color: var(--amber); }
+  .scoreboard .name.czar::before { content: "♛ "; }
+  .scoreboard .score {
+    font-family: "Big Shoulders Display", sans-serif;
+    font-weight: 900;
+    font-size: clamp(1.8rem, 2.6vw, 2.6rem);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .concept-note {
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    padding: 0.5rem;
+    background: var(--panel);
+    border-top: 1px solid var(--rule);
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="left">
+      <span class="live-dot"></span>
+      <span class="room-code">S5XFU</span>
+      <span class="table-pill">Table</span>
+    </div>
+    <span class="phase-tag">Judging</span>
+  </div>
+
+  <main>
+    <span class="board-label">Round 4 — Read Aloud</span>
+    <div class="black-card">
+      <p>My anti-drug is ______.</p>
+    </div>
+
+    <div class="controls">
+      <button class="shuffle-btn">Shuffle</button>
+      <span class="hint">TAP A LOCKED CARD TO REVEAL IT</span>
+    </div>
+
+    <div class="hand">
+      <div class="slot front winner">
+        <span class="idx">01</span>
+        <p>A really cool hat.</p>
+      </div>
+      <div class="slot front">
+        <span class="idx">02</span>
+        <p>Puberty.</p>
+      </div>
+      <div class="slot back"><span class="idx">03</span></div>
+      <div class="slot front">
+        <span class="idx">04</span>
+        <p>Mutually assured destruction.</p>
+      </div>
+      <div class="slot back"><span class="idx">05</span></div>
+    </div>
+  </main>
+
+  <div class="scoreboard">
+    <div class="cell"><div class="name czar">Marcus</div><div class="score">03</div></div>
+    <div class="cell"><div class="name">Priya</div><div class="score">04</div></div>
+    <div class="cell"><div class="name">Jonah</div><div class="score">01</div></div>
+    <div class="cell"><div class="name">Dee</div><div class="score">02</div></div>
+  </div>
+  <div class="concept-note">Mockup 2 of 3 — “Bulletin”: stadium-jumbotron energy, one hot amber accent on true black, tabular scoreboard strip, mono utility type</div>
+</body>
+</html>

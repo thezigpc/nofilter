@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Table Style Picker — Interactive Mockup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&family=Big+Shoulders+Display:wght@700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ui-bg: #131217;
+    --ui-panel: #1a1922;
+    --ui-rule: #2a2933;
+    --ui-ink: #f0efe6;
+    --ui-ink-soft: #9c9aa8;
+    --ui-accent: #7590ff;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--ui-bg);
+    color: var(--ui-ink);
+    font-family: -apple-system, "Segoe UI", sans-serif;
+  }
+  body {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    min-height: 100vh;
+  }
+  @media (max-width: 900px) {
+    body { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- Control rail ---------- */
+  .rail {
+    background: var(--ui-panel);
+    border-right: 1px solid var(--ui-rule);
+    padding: 1.6rem 1.5rem 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.8rem;
+  }
+  .rail h1 {
+    font-size: 1.15rem;
+    margin: 0 0 0.2rem;
+  }
+  .rail .sub {
+    color: var(--ui-ink-soft);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin: 0;
+  }
+  .field { display: flex; flex-direction: column; gap: 0.7rem; }
+  .field label.title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ui-ink-soft);
+  }
+
+  .theme-option {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    background: #201f29;
+    border: 1.5px solid var(--ui-rule);
+    border-radius: 12px;
+    padding: 0.7rem 0.85rem;
+    cursor: pointer;
+    text-align: left;
+    color: var(--ui-ink);
+    font-family: inherit;
+  }
+  .theme-option.selected {
+    border-color: var(--ui-accent);
+    background: #232235;
+  }
+  .theme-option .dot-row { display: flex; gap: 0.3rem; flex-shrink: 0; }
+  .theme-option .dot { width: 14px; height: 14px; border-radius: 4px; }
+  .theme-option .name { font-weight: 700; font-size: 0.92rem; }
+  .theme-option .desc { color: var(--ui-ink-soft); font-size: 0.74rem; margin-top: 0.1rem; }
+
+  .swatch-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  .swatch {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+  }
+  .swatch.selected { border-color: var(--ui-ink); box-shadow: 0 0 0 2px var(--ui-bg); }
+  .swatch .check {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 0.8rem; text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  }
+  .swatch-note {
+    font-size: 0.76rem;
+    color: var(--ui-ink-soft);
+    margin: 0;
+  }
+
+  .pick-row { display: flex; gap: 0.5rem; }
+  .pick-btn {
+    flex: 1;
+    background: #201f29;
+    border: 1.5px solid var(--ui-rule);
+    border-radius: 8px;
+    color: var(--ui-ink-soft);
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.5rem 0;
+    cursor: pointer;
+  }
+  .pick-btn.selected {
+    border-color: var(--ui-accent);
+    color: var(--ui-ink);
+    background: #232235;
+  }
+
+  .toggle-field {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    cursor: pointer;
+  }
+  .toggle-field input { accent-color: var(--ui-accent); width: 1.1rem; height: 1.1rem; }
+
+  .slider-row { display: flex; align-items: center; gap: 0.8rem; }
+  input[type="range"] { flex: 1; accent-color: var(--ui-accent); }
+  .slider-val {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.82rem;
+    color: var(--ui-ink-soft);
+    width: 3.2rem;
+    text-align: right;
+  }
+
+  .reset-btn {
+    align-self: flex-start;
+    background: none;
+    border: 1px solid var(--ui-rule);
+    color: var(--ui-ink-soft);
+    border-radius: 8px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+  .reset-btn:hover { color: var(--ui-ink); border-color: var(--ui-ink-soft); }
+
+  /* ---------- Preview stage ---------- */
+  .stage-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 2rem;
+    overflow: auto;
+  }
+  .stage-header {
+    width: min(100%, 1180px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .stage-label {
+    font-size: 0.76rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ui-ink-soft);
+    margin: 0;
+  }
+  .stage-note {
+    width: min(100%, 1180px);
+    font-size: 0.78rem;
+    color: var(--ui-ink-soft);
+    margin: 0.4rem 0 1rem;
+  }
+  .popout-btn {
+    background: var(--ui-accent);
+    color: #10101a;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .preview-frame {
+    width: min(100%, 1180px);
+    aspect-ratio: 16 / 9;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 40px 90px -30px rgba(0,0,0,0.7);
+    border: 1px solid #000;
+  }
+  .preview-frame iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+</style>
+</head>
+<body>
+  <aside class="rail">
+    <div>
+      <h1>Table Style</h1>
+      <p class="sub">This is what a host would see when setting up the room — pick a look for the shared screen, then fine-tune the accent color and text size. Every player still sees the same plain phone UI; this only changes the Table.</p>
+    </div>
+
+    <div class="field">
+      <span class="title">Style</span>
+      <button class="theme-option selected" data-theme="felt" type="button">
+        <span class="dot-row">
+          <span class="dot" style="background:#101014"></span>
+          <span class="dot" style="background:#4c6fff"></span>
+          <span class="dot" style="background:#f5f4ee"></span>
+        </span>
+        <span>
+          <div class="name">Felt &amp; Ink</div>
+          <div class="desc">Cool, on-brand, condensed type</div>
+        </span>
+      </button>
+      <button class="theme-option" data-theme="bulletin" type="button">
+        <span class="dot-row">
+          <span class="dot" style="background:#0a0a0c"></span>
+          <span class="dot" style="background:#ffb020"></span>
+          <span class="dot" style="background:#eceae3"></span>
+        </span>
+        <span>
+          <div class="name">Bulletin</div>
+          <div class="desc">Bold jumbotron, highest contrast</div>
+        </span>
+      </button>
+    </div>
+    <p class="swatch-note">Parlour's been dropped — its fanned-hand layout clips illegibly once a round has more than ~10 cards on the table.</p>
+
+    <div class="field">
+      <span class="title">Accent color</span>
+      <div class="swatch-row" id="swatchRow"></div>
+      <p class="swatch-note" id="swatchNote"></p>
+    </div>
+
+    <div class="field">
+      <span class="title">Text size</span>
+      <div class="slider-row">
+        <input type="range" id="scaleSlider" min="0.8" max="1.7" step="0.05" value="1.15">
+        <span class="slider-val" id="scaleVal">1.15×</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="title">Players in this round</span>
+      <div class="slider-row">
+        <input type="range" id="playersSlider" min="3" max="20" step="1" value="6">
+        <span class="slider-val" id="playersVal">6</span>
+      </div>
+      <p class="swatch-note">How many face-down cards the Table has to fit at once — worth checking the top of the range, not just a comfy 4-5 player game.</p>
+    </div>
+
+    <div class="field">
+      <span class="title">Black card pick count</span>
+      <div class="pick-row" id="pickRow"></div>
+      <p class="swatch-note">Pick 2/3 rounds group each player's ordered cards into one lineup entry instead of one card each.</p>
+    </div>
+
+    <div class="field">
+      <label class="toggle-field">
+        <input type="checkbox" id="spotlightToggle" checked>
+        <span>Spotlight cards on reveal</span>
+      </label>
+      <p class="swatch-note">On: tapping a card brings it forward, large, with the prompt pinned above it. Off: cards just flip in place in the grid, tap again to pick.</p>
+    </div>
+
+    <button class="reset-btn" id="resetBtn" type="button">Reset to defaults</button>
+  </aside>
+
+  <div class="stage-wrap">
+    <div class="stage-header">
+      <p class="stage-label">Live Table preview</p>
+      <button class="popout-btn" id="popoutBtn" type="button">⧉ Open in a real window</button>
+    </div>
+    <p class="stage-note">The frame below is squeezed to fit this page — sizing, wrapping and crowding will look more true to life in an actual window you can resize or drag to a second screen.</p>
+    <div class="preview-frame">
+      <iframe id="previewFrame" title="Table preview"></iframe>
+    </div>
+  </div>
+
+<script>
+  const THEMES = {
+    felt: {
+      label: "Felt & Ink",
+      fonts: {
+        display: "'Barlow Condensed', sans-serif",
+        body: "'Barlow', sans-serif",
+        displayWeight: 900,
+      },
+      stage: "#101014",
+      cardBlackBg: "#1b1a21",
+      cardBlackFg: "#f2f0ea",
+      cardBlackSub: "#918f9c",
+      cardWhiteBg: "#f5f4ee",
+      cardWhiteFg: "#17161a",
+      ink: "#f2f0ea",
+      inkSoft: "#8d8b96",
+      rule: "#29282f",
+      accents: [
+        { color: "#4c6fff", name: "Signal Blue" },
+        { color: "#8b5cf6", name: "Violet" },
+        { color: "#2dd4bf", name: "Teal" },
+        { color: "#fb7185", name: "Rose" },
+      ],
+      cardStyle: "flat",
+    },
+    bulletin: {
+      label: "Bulletin",
+      fonts: {
+        display: "'Big Shoulders Display', sans-serif",
+        body: "'IBM Plex Mono', monospace",
+        displayWeight: 800,
+      },
+      stage: "#0a0a0c",
+      cardBlackBg: "#000000",
+      cardBlackFg: "#f5f5f5",
+      cardBlackSub: "#77767c",
+      cardWhiteBg: "#eceae3",
+      cardWhiteFg: "#0a0a0c",
+      ink: "#f2f2f0",
+      inkSoft: "#767680",
+      rule: "#232327",
+      accents: [
+        { color: "#35c2c1", name: "Cool Teal (softer)" },
+        { color: "#4d8dff", name: "Cool Blue" },
+        { color: "#ffb020", name: "Amber (original)" },
+        { color: "#e0708a", name: "Muted Rose" },
+      ],
+      cardStyle: "block",
+    },
+  };
+
+  const CARD_POOL = [
+    "A really cool hat.", "Puberty.", "Mutually assured destruction.", "Hobos.", "The Force.",
+    "Birth control.", "A tiny horse.", "Racially motivated arson.", "An unstoppable wave of gentrification.",
+    "The inevitable heat death of the universe.", "A soul-crushing case of the Mondays.", "Vigorous jazz hands.",
+    "Sweet, sweet vengeance.", "The Illuminati.", "An avalanche of student loan debt.", "A rogue Roomba.",
+    "Full-body glitter.", "The last slice of pizza.", "An awkward silence.", "A well-timed sneeze.",
+  ];
+
+  // Deliberately long entries so the spotlight's dynamic sizing has a real
+  // worst case to prove itself against, not just short punchy ones.
+  const LONG_CARDS = [
+    "A trapper keeper full of used lottery tickets, a curling iron, and the vague, unshakable feeling that you peaked in high school.",
+    "Waking up in a bathtub full of ice with a note taped to your chest that just says 'you owe us one kidney, buddy.'",
+    "The gradual, creeping realization that literally everyone at this party is quietly judging your choice of appetizer.",
+    "Explaining to your grandmother, in detail and without breaking eye contact, exactly what a Roomba is and why it just bumped into her cat.",
+  ];
+
+  const DEFAULTS = { theme: "felt", accentIndex: 0, scale: 1.15, players: 6, pick: 1, spotlightEnabled: true };
+  let state = { ...DEFAULTS };
+
+  const frame = document.getElementById("previewFrame");
+  const swatchRow = document.getElementById("swatchRow");
+  const swatchNote = document.getElementById("swatchNote");
+  const scaleSlider = document.getElementById("scaleSlider");
+  const playersSlider = document.getElementById("playersSlider");
+  const playersVal = document.getElementById("playersVal");
+  const scaleVal = document.getElementById("scaleVal");
+  const pickRow = document.getElementById("pickRow");
+  const spotlightToggle = document.getElementById("spotlightToggle");
+
+  function renderPickRow() {
+    pickRow.innerHTML = "";
+    [1, 2, 3].forEach((n) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pick-btn" + (state.pick === n ? " selected" : "");
+      btn.textContent = "Pick " + n;
+      btn.addEventListener("click", () => {
+        state.pick = n;
+        renderPickRow();
+        updateAllPreviews();
+      });
+      pickRow.appendChild(btn);
+    });
+  }
+
+  function renderSwatches() {
+    const theme = THEMES[state.theme];
+    swatchRow.innerHTML = "";
+    theme.accents.forEach((a, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "swatch" + (i === state.accentIndex ? " selected" : "");
+      btn.style.background = a.color;
+      btn.title = a.name;
+      btn.innerHTML = i === state.accentIndex ? '<span class="check">✓</span>' : "";
+      btn.addEventListener("click", () => {
+        state.accentIndex = i;
+        renderSwatches();
+        updateAllPreviews();
+      });
+      swatchRow.appendChild(btn);
+    });
+    swatchNote.textContent = theme.accents[state.accentIndex].name;
+  }
+
+  function buildPreviewHtml() {
+    const t = THEMES[state.theme];
+    const accent = t.accents[state.accentIndex].color;
+    const cardStyle = t.cardStyle;
+    const n = state.players;
+    const pick = state.pick;
+    const blackCardText = "My anti-drug is ______.";
+
+    // Every slot starts face-down - reveal/spotlight/pick is real click
+    // interaction inside the preview itself now (see the embedded script
+    // below), not a pre-baked snapshot.
+    const handSlots = Array.from({ length: n }, (_, i) =>
+      Array.from({ length: pick }, (_, k) => CARD_POOL[(i * pick + k) % CARD_POOL.length])
+    );
+
+    // Card size and gap shrink as the round gets crowded - shown honestly
+    // rather than forced to always fit, since "does this hold up at 15+
+    // players" is the actual question being tested here.
+    const minCardPx = n <= 6 ? 150 : n <= 10 ? 122 : n <= 15 ? 98 : 80;
+    const gap = n <= 6 ? "1rem" : n <= 12 ? "0.7rem" : "0.45rem";
+    // Pick-2/3 lineups stack multiple ordered lines in one card, so the
+    // whole round's cards get proportionally taller to hold them.
+    const aspectRatio = pick === 1 ? "5/6" : pick === 2 ? "5/7.6" : "5/9.2";
+
+    const slotCss = `
+      .hand { display:grid; grid-template-columns:repeat(auto-fill, minmax(${minCardPx}px,1fr)); gap:${gap}; width:100%; }
+      .slot { aspect-ratio:${aspectRatio}; ${cardStyle === "block" ? "border:2px solid var(--rule); border-radius:0;" : "border-radius:14px; box-shadow:0 16px 30px -16px rgba(0,0,0,.5);"} cursor:pointer; }
+      .slot.winner{ ${cardStyle === "block" ? "border-color:var(--accent); box-shadow:0 0 0 3px var(--accent);" : "outline:3px solid var(--accent); outline-offset:3px;"} }
+    `;
+
+    const slotHtml = handSlots.map(function (texts, i) {
+      var safeTexts = JSON.stringify(texts).split("'").join("&#39;");
+      return '<div class="slot back" data-index="' + i + '" data-texts=\'' + safeTexts + '\'><span class="qmark">?</span></div>';
+    }).join("");
+
+    return `<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;600;700&family=Big+Shoulders+Display:wght@700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --stage: ${t.stage};
+    --card-black-bg: ${t.cardBlackBg};
+    --card-black-fg: ${t.cardBlackFg};
+    --card-black-sub: ${t.cardBlackSub};
+    --card-white-bg: ${t.cardWhiteBg};
+    --card-white-fg: ${t.cardWhiteFg};
+    --ink: ${t.ink};
+    --ink-soft: ${t.inkSoft};
+    --rule: ${t.rule};
+    --accent: ${accent};
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; }
+  body {
+    background: var(--stage);
+    color: var(--ink);
+    font-family: ${t.fonts.body};
+    display:flex; flex-direction:column;
+    padding: clamp(1rem,2.4vw,2rem) clamp(1.2rem,3.2vw,2.6rem);
+    zoom: ${state.scale};
+    overflow-y: auto;
+    min-height: 100%;
+  }
+  .display { font-family: ${t.fonts.display}; font-weight: ${t.fonts.displayWeight}; }
+  header { display:flex; align-items:center; justify-content:space-between; margin-bottom: clamp(1rem,2vw,1.6rem); }
+  .room-code { font-family:${t.fonts.display}; font-weight:${t.fonts.displayWeight}; font-size:clamp(1.2rem,2vw,1.8rem); color:var(--ink); }
+  .table-pill { font-size:0.66rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); border:1px solid var(--rule); border-radius:999px; padding:.25rem .6rem; margin-left:.6rem; }
+  .phase-pill { font-family:${t.fonts.display}; font-weight:${t.fonts.displayWeight}; letter-spacing:.08em; text-transform:uppercase; font-size:clamp(.8rem,1.2vw,1rem); background:color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); padding:.4rem 1rem; border-radius:999px; }
+  main { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:clamp(1.2rem,2.4vw,2rem); }
+  .black-card { width:100%; max-width:900px; background:var(--card-black-bg); border:1px solid var(--rule); border-radius:16px; padding:clamp(1.1rem,2.2vw,1.8rem) clamp(1.3rem,2.6vw,2.2rem); text-align:${cardStyle === "block" ? "center" : "left"}; }
+  .black-card .kicker { font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--card-black-sub); margin:0 0 .5rem; }
+  .black-card p { margin:0; font-family:${t.fonts.display}; font-weight:${t.fonts.displayWeight}; line-height:1.15; font-size:clamp(1.5rem,3vw,2.6rem); color:var(--card-black-fg); ${cardStyle === "block" ? "text-transform:uppercase;" : ""} }
+  .shuffle-row { display:flex; align-items:center; gap:.9rem; flex-wrap:wrap; }
+  .shuffle-btn, .longcard-btn { font-family:${t.fonts.display}; font-weight:${t.fonts.displayWeight}; text-transform:uppercase; letter-spacing:.05em; font-size:clamp(.8rem,1.1vw,1rem); color:${cardStyle === "block" ? t.stage : "white"}; background: var(--accent); border:none; border-radius:${cardStyle === "block" ? "0" : "10px"}; padding:.55rem 1.5rem; cursor:pointer; ${cardStyle === "block" ? "clip-path:polygon(6% 0,100% 0,94% 100%,0 100%);" : ""} }
+  .longcard-btn { background:transparent; border:1.5px solid var(--rule); color:var(--ink-soft); clip-path:none; }
+  .shuffle-btn:disabled { opacity:.35; cursor:default; }
+  .hint { color:var(--ink-soft); font-size:.78rem; }
+  ${slotCss}
+  .slot.back { background: ${cardStyle === "block" ? "repeating-linear-gradient(135deg,#141416,#141416 8px,#1a1a1d 8px,#1a1a1d 16px)" : "linear-gradient(150deg, color-mix(in srgb, var(--accent) 35%, var(--card-black-bg)), var(--card-black-bg) 75%)"}; display:flex; align-items:center; justify-content:center; border:1px solid var(--rule); transition: transform .15s ease; }
+  .slot.back:hover { transform: translateY(-3px); }
+  .qmark { font-family:${t.fonts.display}; font-weight:800; font-size:clamp(1.4rem,2.4vw,2rem); color: color-mix(in srgb, var(--ink) 30%, transparent); }
+  .slot.front { background:var(--card-white-bg); color:var(--card-white-fg); padding: clamp(.7rem,1.3vw,1.1rem); display:flex; align-items:flex-start; position:relative; }
+  .slot.front p { margin:0; font-weight:600; line-height:1.28; font-size:clamp(.78rem,1.15vw,1rem); }
+  .lineup { display:flex; flex-direction:column; gap:.5rem; width:100%; }
+  .order-badge { display:inline-flex; align-items:center; justify-content:center; width:1.15em; height:1.15em; border-radius:50%; background:var(--accent); color:${cardStyle === "block" ? t.stage : "white"}; font-size:.72em; font-weight:700; margin-right:.4em; flex-shrink:0; }
+  .crown { position:absolute; top:-10px; right:-6px; font-size:1.1rem; }
+  .pick-hint { color:var(--card-black-sub); font-size:.78rem; margin:.6rem 0 0; }
+  footer { margin-top:clamp(1.2rem,2vw,1.8rem); display:flex; gap:clamp(1rem,2vw,1.6rem); flex-wrap:wrap; border-top:1px solid var(--rule); padding-top:clamp(.7rem,1.2vw,1rem); }
+  .score-chip { display:flex; align-items:baseline; gap:.4rem; font-size:.85rem; }
+  .score-chip .num { font-family:${t.fonts.display}; font-weight:${t.fonts.displayWeight}; color:var(--accent); }
+  .score-chip.czar .name::before { content:"♛ "; color:var(--accent); }
+
+  /* ---------- Spotlight: tapping a card brings it forward and enlarges it ---------- */
+  .spotlight-backdrop {
+    position:fixed; inset:0; background:rgba(0,0,0,.72); backdrop-filter:blur(4px);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem;
+    z-index:100; padding:2rem; opacity:0; pointer-events:none; transition:opacity .18s ease;
+  }
+  .spotlight-backdrop.open { opacity:1; pointer-events:auto; }
+  .spotlight-prompt {
+    width:min(80vw, 720px); text-align:${cardStyle === "block" ? "center" : "left"};
+    color:var(--card-black-fg); font-family:${t.fonts.display}; font-weight:${t.fonts.displayWeight};
+    font-size:clamp(1.1rem,2.2vw,1.7rem); line-height:1.2;
+    ${cardStyle === "block" ? "text-transform:uppercase;" : ""}
+    background:var(--card-black-bg); border:2px solid var(--accent); border-radius:12px; padding:.9rem 1.4rem;
+  }
+  .spotlight-card {
+    background:var(--card-white-bg); color:var(--card-white-fg);
+    ${cardStyle === "block" ? "border-radius:0; border:3px solid var(--accent);" : "border-radius:20px;"}
+    width:min(80vw, 720px); max-height:52vh; overflow:auto;
+    padding:clamp(1.2rem,2.6vw,2.2rem);
+    box-shadow:0 40px 90px -20px rgba(0,0,0,.6);
+    transform:scale(.9); transition:transform .18s ease;
+  }
+  .spotlight-backdrop.open .spotlight-card { transform:scale(1); }
+  .spotlight-card .lineup { gap:.9rem; }
+  .spotlight-actions { display:flex; gap:.9rem; }
+  .spotlight-actions button {
+    font-family:${t.fonts.display}; font-weight:${t.fonts.displayWeight}; text-transform:uppercase; letter-spacing:.05em;
+    font-size:1rem; border:none; padding:.7rem 1.8rem; cursor:pointer; ${cardStyle === "block" ? "border-radius:0;" : "border-radius:10px;"}
+  }
+  .spotlight-pick { background:var(--accent); color:${cardStyle === "block" ? t.stage : "white"}; }
+  .spotlight-back { background:transparent; border:1.5px solid rgba(255,255,255,.4) !important; color:var(--ink); }
+</style></head>
+<body>
+  <header>
+    <div style="display:flex;align-items:center;">
+      <span class="room-code">S5XFU</span>
+      <span class="table-pill">Table</span>
+    </div>
+    <span class="phase-pill">Judging</span>
+  </header>
+  <main>
+    <div class="black-card">
+      <p class="kicker">Round 4</p>
+      <p id="blackCardText">${blackCardText}</p>
+      ${pick > 1 ? '<p class="pick-hint">Pick ' + pick + ', in order</p>' : ""}
+    </div>
+    <div class="shuffle-row">
+      <button class="shuffle-btn" id="shuffleBtn">🔀 Shuffle</button>
+      <button class="longcard-btn" id="longCardBtn">🔎 Test a long card</button>
+      <button class="longcard-btn" id="longPromptBtn">📏 Test a long prompt</button>
+      <span class="hint">Tap a face-down card to bring it forward</span>
+    </div>
+    <div class="hand" id="hand">${slotHtml}</div>
+  </main>
+  <footer>
+    <div class="score-chip czar"><span class="name">Marcus</span> <span class="num">3</span></div>
+    <div class="score-chip"><span class="name">Priya</span> <span class="num">4</span></div>
+    <div class="score-chip"><span class="name">Jonah</span> <span class="num">1</span></div>
+    <div class="score-chip"><span class="name">Dee</span> <span class="num">2</span></div>
+  </footer>
+  <div class="spotlight-backdrop" id="spotlightBackdrop">
+    <p class="spotlight-prompt" id="spotlightPrompt">${blackCardText}</p>
+    <div class="spotlight-card" id="spotlightCard"></div>
+    <div class="spotlight-actions">
+      <button class="spotlight-pick" id="spotlightPick">🏆 Pick this one</button>
+      <button class="spotlight-back" id="spotlightBack">← Back to board</button>
+    </div>
+  </div>
+
+<script>
+  const LONG_CARDS = ${JSON.stringify(LONG_CARDS)};
+  const LONG_PROMPT = "In a shocking turn of events, the local news anchor calmly announced that _ would be replacing democracy as the primary form of government by next Tuesday, and honestly, everyone seemed relieved.";
+  const hand = document.getElementById("hand");
+  const shuffleBtn = document.getElementById("shuffleBtn");
+  const longCardBtn = document.getElementById("longCardBtn");
+  const longPromptBtn = document.getElementById("longPromptBtn");
+  const blackCardTextEl = document.getElementById("blackCardText");
+  const spotlightPromptEl = document.getElementById("spotlightPrompt");
+  const backdrop = document.getElementById("spotlightBackdrop");
+  const spotlightCard = document.getElementById("spotlightCard");
+  const spotlightPick = document.getElementById("spotlightPick");
+  const spotlightBack = document.getElementById("spotlightBack");
+  let revealedCount = 0;
+  let currentSlot = null;
+  const MANUAL_SCALE = ${state.scale};
+  const MIN_AUTO_SCALE = 0.55;
+
+  // Never let the composition (black card + hand + scoreboard) grow taller
+  // than the actual screen and push the scoreboard out of view - shrink on
+  // top of the manual text-size preference just enough to fit, instead of
+  // silently overflowing into a scrollbar on what's meant to be a
+  // glanceable shared display.
+  function fitToScreen() {
+    document.body.style.zoom = MANUAL_SCALE;
+    const contentHeight = document.documentElement.scrollHeight;
+    const viewportHeight = window.innerHeight;
+    if (contentHeight > viewportHeight) {
+      const ratio = viewportHeight / contentHeight;
+      const fitted = Math.max(MIN_AUTO_SCALE, MANUAL_SCALE * ratio * 0.97);
+      document.body.style.zoom = fitted;
+    }
+  }
+
+  window.addEventListener("resize", fitToScreen);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(fitToScreen);
+  }
+  fitToScreen();
+
+  function fitFontSize(texts) {
+    const totalLen = texts.join(" ").length;
+    if (totalLen < 25) return "2.4rem";
+    if (totalLen < 50) return "1.9rem";
+    if (totalLen < 90) return "1.5rem";
+    if (totalLen < 140) return "1.15rem";
+    return "0.95rem";
+  }
+
+  function cardLinesHtml(texts, fontSize) {
+    if (texts.length === 1) {
+      return '<p style="font-size:' + fontSize + '">' + texts[0] + '</p>';
+    }
+    var lines = texts.map(function (txt, k) {
+      return '<p style="font-size:' + fontSize + '"><span class="order-badge">' + (k + 1) + '</span>' + txt + '</p>';
+    }).join("");
+    return '<div class="lineup">' + lines + '</div>';
+  }
+
+  const SPOTLIGHT_ENABLED = ${state.spotlightEnabled};
+
+  function revealInPlace(slot) {
+    const texts = JSON.parse(slot.dataset.texts);
+    slot.classList.remove("back");
+    slot.classList.add("front");
+    slot.innerHTML = cardLinesHtml(texts, "0.85rem");
+    revealedCount++;
+    shuffleBtn.disabled = true;
+    fitToScreen();
+  }
+
+  function pickWinner(slot) {
+    document.querySelectorAll(".slot.winner").forEach((s) => {
+      s.classList.remove("winner");
+      s.querySelector(".crown")?.remove();
+    });
+    slot.classList.add("winner");
+    slot.insertAdjacentHTML("afterbegin", '<span class="crown">👑</span>');
+  }
+
+  function openSpotlight(slot) {
+    currentSlot = slot;
+    if (slot.classList.contains("back")) revealInPlace(slot);
+    const texts = JSON.parse(slot.dataset.texts);
+    spotlightCard.innerHTML = cardLinesHtml(texts, fitFontSize(texts));
+    backdrop.classList.add("open");
+  }
+
+  function closeSpotlight() {
+    backdrop.classList.remove("open");
+  }
+
+  hand.addEventListener("click", (e) => {
+    const slot = e.target.closest(".slot");
+    if (!slot) return;
+    if (SPOTLIGHT_ENABLED) {
+      openSpotlight(slot);
+    } else if (slot.classList.contains("back")) {
+      revealInPlace(slot);
+    } else {
+      pickWinner(slot);
+    }
+  });
+
+  spotlightBack.addEventListener("click", closeSpotlight);
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) closeSpotlight();
+  });
+  spotlightPick.addEventListener("click", () => {
+    if (!currentSlot) return;
+    pickWinner(currentSlot);
+    closeSpotlight();
+  });
+
+  shuffleBtn.addEventListener("click", () => {
+    if (revealedCount > 0) return;
+    const slots = [...hand.children];
+    for (let i = slots.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      hand.insertBefore(slots[j], slots[i].nextSibling);
+      [slots[i], slots[j]] = [slots[j], slots[i]];
+    }
+  });
+
+  longCardBtn.addEventListener("click", () => {
+    const firstBack = hand.querySelector(".slot.back");
+    if (!firstBack) return;
+    const pickCount = JSON.parse(firstBack.dataset.texts).length;
+    const texts = Array.from({ length: pickCount }, (_, k) => LONG_CARDS[k % LONG_CARDS.length]);
+    firstBack.dataset.texts = JSON.stringify(texts);
+    if (SPOTLIGHT_ENABLED) {
+      openSpotlight(firstBack);
+    } else {
+      revealInPlace(firstBack);
+    }
+  });
+
+  longPromptBtn.addEventListener("click", () => {
+    blackCardTextEl.textContent = LONG_PROMPT;
+    spotlightPromptEl.textContent = LONG_PROMPT;
+    fitToScreen();
+  });
+<\/script>
+</body></html>`;
+  }
+
+  let popupWin = null;
+
+  function renderPreview() {
+    frame.srcdoc = buildPreviewHtml();
+  }
+
+  function updatePopup() {
+    if (popupWin && !popupWin.closed) {
+      popupWin.document.open();
+      popupWin.document.write(buildPreviewHtml());
+      popupWin.document.close();
+    }
+  }
+
+  function updateAllPreviews() {
+    renderPreview();
+    updatePopup();
+  }
+
+  document.getElementById("popoutBtn").addEventListener("click", () => {
+    popupWin = window.open("", "ttj_table_preview", "width=900,height=560");
+    if (popupWin) updatePopup();
+  });
+
+  document.querySelectorAll(".theme-option").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".theme-option").forEach((b) => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      state.theme = btn.dataset.theme;
+      state.accentIndex = 0;
+      renderSwatches();
+      updateAllPreviews();
+    });
+  });
+
+  scaleSlider.addEventListener("input", () => {
+    state.scale = Number(scaleSlider.value);
+    scaleVal.textContent = state.scale.toFixed(2) + "×";
+    updateAllPreviews();
+  });
+
+  playersSlider.addEventListener("input", () => {
+    state.players = Number(playersSlider.value);
+    playersVal.textContent = String(state.players);
+    updateAllPreviews();
+  });
+
+  spotlightToggle.addEventListener("change", () => {
+    state.spotlightEnabled = spotlightToggle.checked;
+    updateAllPreviews();
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    state = { ...DEFAULTS };
+    document.querySelectorAll(".theme-option").forEach((b) => b.classList.toggle("selected", b.dataset.theme === state.theme));
+    scaleSlider.value = state.scale;
+    scaleVal.textContent = state.scale.toFixed(2) + "×";
+    playersSlider.value = state.players;
+    playersVal.textContent = String(state.players);
+    spotlightToggle.checked = state.spotlightEnabled;
+    renderSwatches();
+    renderPickRow();
+    updateAllPreviews();
+  });
+
+  // init
+  scaleVal.textContent = state.scale.toFixed(2) + "×";
+  playersVal.textContent = String(state.players);
+  renderSwatches();
+  renderPickRow();
+  updateAllPreviews();
+</script>
+</body>
+</html>

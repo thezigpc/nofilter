@@ -1,0 +1,1137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ambient Backgrounds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Big+Shoulders+Display:wght@700;800;900&family=Orbitron:wght@700;800;900&family=Anton&family=Baloo+2:wght@700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Audiowide&family=Chakra+Petch:wght@500;600;700&display=swap"
+  rel="stylesheet"
+/>
+<style>
+  :root {
+    --chrome-bg: #121014;
+    --chrome-panel: #1a181d;
+    --chrome-panel-2: #211f26;
+    --chrome-border: #2c2932;
+    --chrome-ink: #e9e6ef;
+    --chrome-muted: #8b8794;
+    --chrome-accent: #7c8cff;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--chrome-bg);
+    color: var(--chrome-ink);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    height: 100%;
+  }
+  .shell {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    min-height: 100vh;
+  }
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- Control rail ---------- */
+  .rail {
+    background: var(--chrome-panel);
+    border-right: 1px solid var(--chrome-border);
+    padding: 22px 18px 40px;
+    overflow-y: auto;
+  }
+  .rail h1 {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 2px;
+    letter-spacing: -0.01em;
+  }
+  .rail .sub {
+    font-size: 12px;
+    color: var(--chrome-muted);
+    margin: 0 0 22px;
+    line-height: 1.5;
+  }
+  .group { margin-bottom: 22px; }
+  .group-label {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--chrome-muted);
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .theme-list, .ambient-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .theme-btn, .ambient-btn {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    text-align: left;
+    background: var(--chrome-panel-2);
+    border: 1px solid transparent;
+    color: var(--chrome-ink);
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .theme-btn:hover, .ambient-btn:hover { background: #29262e; }
+  .theme-btn.selected, .ambient-btn.selected {
+    border-color: var(--chrome-accent);
+    background: color-mix(in srgb, var(--chrome-accent) 16%, var(--chrome-panel-2));
+  }
+  .swatch {
+    width: 16px; height: 16px; border-radius: 4px; flex: none;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .ambient-btn .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex: none;
+    background: var(--chrome-muted);
+  }
+  .ambient-btn.selected .dot { background: var(--chrome-accent); }
+  .badge {
+    margin-left: auto;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--chrome-muted);
+    background: rgba(255,255,255,0.06);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .accent-row { display: flex; gap: 7px; margin-top: 2px; }
+  .accent-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+  }
+  .accent-dot.selected { border-color: #fff; }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .toggle-row input { accent-color: var(--chrome-accent); }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .slider-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--chrome-accent);
+  }
+  .slider-value {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--chrome-ink);
+    width: 38px;
+    text-align: right;
+  }
+  .note {
+    font-size: 11.5px;
+    color: var(--chrome-muted);
+    line-height: 1.5;
+    margin-top: 6px;
+    padding: 9px 10px;
+    background: var(--chrome-panel-2);
+    border-radius: 8px;
+    border-left: 2px solid var(--chrome-accent);
+  }
+
+  /* ---------- Preview stage ---------- */
+  .stage-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    min-height: 100vh;
+  }
+  .stage {
+    width: 100%;
+    max-width: 880px;
+    aspect-ratio: 16 / 10;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    /* position:relative alone (z-index:auto) does NOT create a stacking
+       context, so .stage-scene's z-index:-1 would otherwise escape past
+       .stage entirely and paint behind its whole box - including .stage's
+       own opaque background - rather than just behind its content. This
+       is what actually contains it. */
+    isolation: isolate;
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6);
+    padding: 26px 30px;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.25s ease;
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  /* Negative z-index (not DOM order) is what guarantees this paints behind
+     every normal-flow sibling regardless of markup position - .stage's own
+     position:relative makes it a containing stacking context, so -1 here
+     can't escape underneath anything outside the stage. */
+  .stage-scene {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .stage-scene svg { width: 100%; height: 100%; display: block; }
+
+  /* Synthwave's grid floor: a real CSS 3D plane, not an SVG line trick -
+     see the long comment at its call site (synthwaveSunset) for why.
+     Structural/always-on (visible, just not moving, when .animate is
+     off) - only the scroll itself is gated, further down. */
+  .synth-grid-floor {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 32%; /* matches horizonY/h (200/625) in the paired SVG */
+    bottom: 0;
+    overflow: hidden;
+    /* A short perspective distance (originally 260px, well under the
+       floor's own ~370px rendered height) combined with a near-edge-on
+       80deg tilt pushed most of the plane's far portion behind the
+       camera plane entirely - it rendered as nothing, not just faint.
+       Verified empirically in isolation (grid-test.html) against several
+       combinations before landing here: 500px/65deg is the first one
+       that actually paints a full, undistorted floor edge-to-edge. */
+    perspective: 500px;
+    perspective-origin: 50% 0%;
+  }
+  .synth-grid-floor .plane {
+    position: absolute;
+    /* Generously overhung on every side: after rotateX() tilts this
+       toward flat, its edges need to already reach past the visible
+       trapezoid or the corners go blank instead of showing more grid. */
+    left: -150%;
+    right: -150%;
+    top: -10%;
+    bottom: -220%;
+    background-image:
+      repeating-linear-gradient(0deg, var(--grid-color) 0 2px, transparent 2px 46px),
+      repeating-linear-gradient(90deg, var(--grid-color) 0 2px, transparent 2px 70px);
+    opacity: 0.75;
+    transform: rotateX(65deg);
+    transform-origin: top center;
+  }
+
+  /* Scene animation, one class per effect, every theme opting in the same
+     way (a class on the element(s) + this shared gate) - the .animate
+     toggle and the OS-level reduce-motion check both live here once,
+     not per-effect. transform-box is set per-rule because SVG's default
+     reference frame is inconsistent across element types; fill-box
+     anchors to the element's OWN box (needed for a bar/ripple to scale
+     from its own edge/center rather than the canvas origin), view-box
+     is for a group whose transform-origin is a specific scene coordinate
+     (the laser fan's light source) rather than the group's own bounds. */
+  @media (prefers-reduced-motion: no-preference) {
+    .stage-scene.animate .eq-bar {
+      transform-box: fill-box;
+      transform-origin: bottom;
+      animation-name: eqPulse;
+      animation-timing-function: ease-in-out;
+      animation-iteration-count: infinite;
+    }
+    .stage-scene.animate .laser-fan {
+      transform-box: view-box;
+      animation: laserSweep 5s ease-in-out infinite;
+    }
+    .stage-scene.animate .strobe-fleck {
+      animation-name: flickerPulse;
+      animation-timing-function: ease-in-out;
+      animation-iteration-count: infinite;
+    }
+    .stage-scene.animate .ripple {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation-name: rippleExpand;
+      animation-timing-function: ease-out;
+      animation-iteration-count: infinite;
+    }
+    .stage-scene.animate .scanline {
+      animation: scanSweep 6s linear infinite;
+    }
+    .stage-scene.animate .neon-flicker {
+      animation: neonFlicker 3.4s infinite;
+    }
+    .stage-scene.animate .twinkle {
+      animation-name: flickerPulse;
+      animation-timing-function: ease-in-out;
+      animation-iteration-count: infinite;
+    }
+    .stage-scene.animate .fixture-sway {
+      /* view-box, not fill-box: the inline transform-origin set per
+         fixture (matching its cable's exact x,y) is an absolute SVG
+         coordinate, not an offset within the fixture's own bounding box -
+         fill-box would reinterpret it relative to that box instead. */
+      transform-box: view-box;
+      animation: fixtureSway 4s ease-in-out infinite;
+    }
+    .stage-scene.animate .wave-scroll {
+      animation: waveScroll 6s linear infinite;
+    }
+    .stage-scene.animate .lamp-flicker {
+      animation: lampFlicker 5s ease-in-out infinite;
+    }
+    /* The one SVG element in Synthwave's scene that's reliably in the
+       clear (peeking right above the black card, not fighting the
+       judging grid for space) - breathing thickness/brightness here
+       reads clearly even at a glance. */
+    .stage-scene.animate .horizon-glow {
+      animation: horizonPulse 2.6s ease-in-out infinite;
+    }
+    .stage-scene.animate .synth-grid-floor .plane {
+      animation: gridFly 1.4s linear infinite;
+    }
+  }
+  @keyframes horizonPulse {
+    0%, 100% { opacity: 0.6; stroke-width: 2.5; }
+    50% { opacity: 1; stroke-width: 6; }
+  }
+  /* A plain, constant-speed background scroll - the "moving fast up
+     close, slow far away" road illusion is entirely a side effect of the
+     rotateX()/perspective() the plane already sits under, not something
+     encoded in this keyframe. 46px is exactly one tile of the horizontal
+     grid-line gradient, so the loop point is seamless. */
+  @keyframes gridFly {
+    from { background-position-y: 0; }
+    to { background-position-y: 46px; }
+  }
+  @keyframes eqPulse {
+    0%, 100% { transform: scaleY(var(--eq-min, 0.4)); }
+    50% { transform: scaleY(1); }
+  }
+  @keyframes laserSweep {
+    0%, 100% { transform: rotate(-6deg); }
+    50% { transform: rotate(6deg); }
+  }
+  /* Shared by strobe flecks, twinkling paint flecks, and the synthwave
+     grid's energy-pulse - all the same "breathe between two opacities"
+     shape, just with per-element --flicker-lo/--flicker-hi/duration/delay
+     so a whole scattered set doesn't move in lockstep. */
+  @keyframes flickerPulse {
+    0%, 100% { opacity: var(--flicker-lo, 0.2); }
+    50% { opacity: var(--flicker-hi, 0.8); }
+  }
+  @keyframes rippleExpand {
+    0% { transform: scale(0.85); opacity: var(--ripple-o, 0.2); }
+    100% { transform: scale(1.18); opacity: 0; }
+  }
+  @keyframes scanSweep {
+    0% { transform: translateY(-30px); opacity: 0; }
+    8% { opacity: 0.5; }
+    92% { opacity: 0.5; }
+    100% { transform: translateY(625px); opacity: 0; }
+  }
+  @keyframes neonFlicker {
+    0%, 18%, 22%, 26%, 55%, 100% { opacity: 1; }
+    20%, 24%, 56% { opacity: 0.35; }
+  }
+  @keyframes fixtureSway {
+    0%, 100% { transform: rotate(-2.5deg); }
+    50% { transform: rotate(2.5deg); }
+  }
+  @keyframes waveScroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-250px); }
+  }
+  @keyframes lampFlicker {
+    0%, 100% { opacity: 0.16; }
+    40% { opacity: 0.19; }
+    45% { opacity: 0.11; }
+    50% { opacity: 0.18; }
+    75% { opacity: 0.14; }
+  }
+
+  .s-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .s-header .room { display: flex; align-items: center; gap: 10px; }
+  .s-header .code {
+    font-family: var(--display-font, inherit);
+    font-weight: var(--display-weight, 700);
+    font-size: 20px;
+    text-transform: var(--card-black-transform, none);
+    color: var(--paper);
+  }
+  .s-header .tag {
+    font-size: 11px;
+    background: rgba(255,255,255,0.08);
+    color: var(--paper);
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+  .s-header .phase {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--bg);
+    background: var(--accent);
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  .card-black {
+    background: color-mix(in srgb, var(--bg) 70%, black);
+    color: var(--paper);
+    border-radius: var(--card-radius, 10px);
+    padding: 20px 24px;
+    font-family: var(--display-font, inherit);
+    font-weight: var(--display-weight, 700);
+    text-transform: var(--card-black-transform, none);
+    font-size: 21px;
+    line-height: 1.3;
+    margin-bottom: 18px;
+  }
+  .card-black p { margin: 0; }
+  /* Per-theme card-black flourishes, matching index.css exactly. */
+  .stage[data-theme="neon"] .card-black {
+    border: 1.5px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    box-shadow: 0 0 40px -8px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  .stage[data-theme="site"] .card-black {
+    border: 2px solid color-mix(in srgb, var(--paper) 15%, transparent);
+    border-top: 6px solid var(--accent);
+  }
+  /* Digital-club HUD bezel: a thin frame plus a second, offset outline
+     ring - a "screen inside a screen" read rather than Site's hazard-tape
+     top bar. */
+  .stage[data-theme="techno"] .card-black {
+    border: 1px solid var(--accent);
+    outline: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    outline-offset: 5px;
+  }
+  .stage[data-theme="beach"] .card-black {
+    border: 2px solid var(--accent);
+  }
+  .stage[data-theme="parlour"] .card-black p {
+    font-style: italic;
+  }
+  .stage[data-theme="parlour"] .card-black p::before,
+  .stage[data-theme="parlour"] .card-black p::after {
+    content: '"';
+    color: var(--accent);
+  }
+  .stage[data-theme="synthwave"] .card-black {
+    border: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    border-bottom: 5px solid var(--accent);
+    box-shadow: 0 0 34px -8px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+
+  .s-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    flex: 1;
+    min-height: 0;
+  }
+  .s-slot {
+    border-radius: var(--card-radius, 10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    padding: 10px;
+    text-align: center;
+  }
+  .s-slot.revealed {
+    background: var(--white-card-bg);
+    color: var(--white-card-fg);
+    font-weight: 600;
+    align-items: flex-start;
+    justify-content: flex-start;
+    text-align: left;
+  }
+  .s-slot.facedown {
+    background: var(--card-back-pattern);
+    color: color-mix(in srgb, var(--paper) 65%, transparent);
+    font-size: 22px;
+    border: 1px solid color-mix(in srgb, var(--paper) 12%, transparent);
+    opacity: var(--facedown-opacity, 1);
+    transition: opacity 0.15s ease;
+  }
+
+  .s-score {
+    margin-top: 14px;
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: color-mix(in srgb, var(--paper) 80%, transparent);
+  }
+  .s-score b { color: var(--paper); }
+
+  .stage-caption {
+    max-width: 880px;
+    width: 100%;
+    text-align: center;
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--chrome-muted);
+  }
+  .stage-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="rail">
+    <h1>Ambient Backgrounds</h1>
+    <p class="sub">Every theme gets a flat look (today's default) and a toggleable "rich" atmospheric one. Beach and Synthwave already shipped theirs — the rest are candidates. Pick a theme, then compare its options.</p>
+
+    <div class="group">
+      <div class="group-label">Theme</div>
+      <div class="theme-list" id="themeList"></div>
+    </div>
+
+    <div class="group">
+      <div class="group-label">Accent</div>
+      <div class="accent-row" id="accentRow"></div>
+    </div>
+
+    <div class="group">
+      <div class="group-label">Ambient background</div>
+      <div class="ambient-list" id="ambientList"></div>
+      <div class="note" id="ambientNote"></div>
+    </div>
+
+    <div class="group">
+      <div class="group-label">Face-down card opacity</div>
+      <div class="slider-row">
+        <input type="range" id="facedownOpacity" min="20" max="100" value="100" step="5" />
+        <span class="slider-value" id="facedownOpacityValue">100%</span>
+      </div>
+      <div class="note">Lets the ambient background show through the not-yet-revealed cards instead of hiding behind them — more of the scene stays visible while a round is still face-down.</div>
+    </div>
+
+    <div class="group">
+      <div class="group-label">Animation (proof of concept)</div>
+      <label class="toggle-row">
+        <input type="checkbox" id="animateToggle" />
+        <span>Animate scene</span>
+      </label>
+      <div class="note">CSS animation, not a render loop - real elements in the SVG, no different from animating any other page element. Only Techno's equalizer bars are wired up so far (switch to Techno → Laser Rig to see it); every other scene is still static. Off automatically for anyone with "reduce motion" set at the OS level, regardless of this toggle.</div>
+    </div>
+  </div>
+
+  <div class="stage-wrap">
+    <div class="stage-col">
+      <div class="stage" id="stage" data-theme="felt" data-ambient="off">
+        <div class="stage-scene" id="stageScene"></div>
+        <div class="s-header">
+          <div class="room">
+            <span class="code" id="roomCode">ABCD</span>
+            <span class="tag">Shared Screen</span>
+          </div>
+          <span class="phase">Judging</span>
+        </div>
+        <div class="card-black"><p>A totally reasonable request: please pass the _.</p></div>
+        <div class="s-grid">
+          <div class="s-slot revealed">A tiny horse in a big hat.</div>
+          <div class="s-slot facedown">?</div>
+          <div class="s-slot facedown">?</div>
+        </div>
+        <div class="s-score"><b>Marcus</b> 4 &nbsp; Priya 2 &nbsp; Jonah 3 &nbsp; Dee 1</div>
+      </div>
+      <p class="stage-caption" id="caption"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+const THEMES = {
+  felt: {
+    name: "Felt & Ink", accentName: "cool, on-brand",
+    tokens: { bg: "#101014", paper: "#f2f0ea", accent: "#4c6fff", whiteCardBg: "#f5f4ee", whiteCardFg: "#17161a", radius: "14px", font: '"Barlow Condensed", sans-serif', weight: "800", transform: "none",
+      cardBack: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 45%, var(--bg)), var(--bg))" },
+    accents: ["#4c6fff", "#8b5cf6", "#2dd4bf", "#fb7185"],
+    ambients: {
+      off: { label: "Flat (current)", bg: "var(--bg)" },
+      a: { label: "A — Ink Bloom", bg: "radial-gradient(circle at 85% -10%, rgba(76,111,255,0.30), transparent 50%), radial-gradient(circle at 5% 100%, rgba(139,92,246,0.24), transparent 45%), var(--bg)",
+        note: "Two soft glows — signal blue upper right, violet lower left — like ink diffusing into felt." },
+      b: { label: "B — Steel Vignette", bg: "radial-gradient(circle at 50% 38%, rgba(76,111,255,0.14), transparent 60%), radial-gradient(ellipse at center, transparent 42%, rgba(0,0,0,0.5) 100%), var(--bg)",
+        note: "A cool center glow with a darkened vignette toward the edges — quieter, more boardroom than party." },
+      img: { label: "C — Ink Bloom (image)", type: "scene", scene: "feltInkBloom",
+        note: "A real spreading ink blob with rippling rings, not a gradient glow — plus two small satellite droplets for balance." },
+    },
+  },
+  bulletin: {
+    name: "Bulletin", accentName: "jumbotron",
+    tokens: { bg: "#0a0a0c", paper: "#f5f5f5", accent: "#ffb020", whiteCardBg: "#eceae3", whiteCardFg: "#0a0a0c", radius: "0px", font: '"Big Shoulders Display", sans-serif', weight: "800", transform: "uppercase",
+      cardBack: "repeating-linear-gradient(135deg, color-mix(in srgb, var(--bg) 85%, white), color-mix(in srgb, var(--bg) 85%, white) 8px, var(--bg) 8px, var(--bg) 16px)" },
+    accents: ["#ffb020", "#4d8dff", "#35c2c1", "#e0708a"],
+    ambients: {
+      off: { label: "Flat (current)", bg: "var(--bg)" },
+      a: { label: "A — Jumbotron Glow", bg: "radial-gradient(ellipse at 12% -12%, rgba(255,176,32,0.30), transparent 45%), radial-gradient(ellipse at 88% -12%, rgba(255,176,32,0.30), transparent 45%), var(--bg)",
+        note: "Warm floodlight glow from both top corners, like a stadium screen lit from above." },
+      b: { label: "B — Newsprint Halftone", bg: "repeating-radial-gradient(circle at 0 0, rgba(255,255,255,0.06) 0, rgba(255,255,255,0.06) 1.4px, transparent 1.4px, transparent 9px), var(--bg)",
+        note: "A faint halftone dot texture across the whole screen — newsprint/bulletin-board paper grain." },
+      img: { label: "C — Corkboard (image)", type: "scene", scene: "bulletinCorkboard",
+        note: "A literal corkboard: fleck texture across the whole screen plus two pinned torn-paper corners with pushpins in the accent color." },
+    },
+  },
+  neon: {
+    name: "Neon", accentName: "black-light glow",
+    tokens: { bg: "#0a0710", paper: "#ede4fb", accent: "#ff2fb0", whiteCardBg: "#f7f2ff", whiteCardFg: "#1a1024", radius: "8px", font: '"Orbitron", sans-serif', weight: "700", transform: "uppercase",
+      cardBack: "linear-gradient(150deg, #2a1246 0%, #12081f 70%)" },
+    accents: ["#ff2fb0", "#2af0ff", "#c6ff2a", "#a855f7"],
+    ambients: {
+      off: { label: "Flat (current)", bg: "var(--bg)" },
+      a: { label: "A — Black Light Room", bg: "radial-gradient(circle at 92% -4%, rgba(255,47,176,0.32), transparent 45%), radial-gradient(circle at 4% 102%, rgba(42,240,255,0.24), transparent 45%), var(--bg)",
+        note: "Hot pink glow top-right, cyan glow bottom-left — the two accent colors meeting in the middle like a black-light poster room." },
+      b: { label: "B — Laser Grid", bg: "repeating-linear-gradient(0deg, rgba(255,47,176,0.07) 0 1px, transparent 1px 42px), repeating-linear-gradient(90deg, rgba(42,240,255,0.07) 0 1px, transparent 1px 42px), var(--bg)",
+        note: "A faint magenta/cyan grid of lines — laser-tag arena floor, more geometric than glowy." },
+      img: { label: "C — Tube Sign (image)", type: "scene", scene: "neonBlackLightPoster",
+        note: "A real glowing neon tube sign (a bolt, drawn with an actual blur-glow filter) plus scattered black-light paint flecks." },
+    },
+  },
+  site: {
+    name: "Construction Zone", accentName: "construction hazard",
+    tokens: { bg: "#0d0d0e", paper: "#ededea", accent: "#d7ff2b", whiteCardBg: "#ededea", whiteCardFg: "#0d0d0e", radius: "0px", font: '"Anton", sans-serif', weight: "400", transform: "uppercase",
+      cardBack: "repeating-linear-gradient(45deg, #1c1c1c 0 10px, #141414 10px 20px)" },
+    accents: ["#d7ff2b", "#ff7a1a", "#ff3b1f", "#35c7ff"],
+    ambients: {
+      off: { label: "Flat (current)", bg: "var(--bg)" },
+      a: { label: "A — Warehouse Spotlights", bg: "radial-gradient(ellipse 55% 40% at 6% -4%, rgba(215,255,43,0.30), transparent 65%), radial-gradient(ellipse 55% 40% at 94% -4%, rgba(255,122,26,0.28), transparent 65%), var(--bg)",
+        note: "Two angled light pools from the top corners — laser-yellow and hazard-orange, like warehouse-rave spotlights." },
+      b: { label: "B — Hazard Wash", bg: "repeating-linear-gradient(135deg, rgba(215,255,43,0.06) 0 14px, transparent 14px 28px), var(--bg)",
+        note: "A very low-opacity diagonal hazard-stripe wash across the whole background — texture, not glow." },
+      img: { label: "C — Rig (image)", type: "scene", scene: "siteWarehouse",
+        note: "A real warehouse rig: roof truss, two hanging fixtures with light cones, and a hazard-striped floor band at the bottom." },
+    },
+  },
+  techno: {
+    // Renamed from what used to sit here (hazard stripes, warehouse rig)
+    // now living at "site" - that look reads as a construction/industrial
+    // site, not electronic music. This is a genuinely different identity:
+    // minimal club techno - stark near-black, one laser-bright accent,
+    // an angular digital display face, and a notched HUD-style card cut
+    // instead of a hazard-tape one.
+    name: "Techno", accentName: "digital club",
+    tokens: { bg: "#0a0b10", paper: "#eef0f3", accent: "#00ffa3", whiteCardBg: "#eef0f3", whiteCardFg: "#0a0b10", radius: "2px", font: '"Chakra Petch", sans-serif', weight: "700", transform: "uppercase",
+      cardBack: "repeating-linear-gradient(90deg, #14161c 0 1px, transparent 1px 24px), repeating-linear-gradient(0deg, #14161c 0 1px, transparent 1px 24px), #0a0b10" },
+    accents: ["#00ffa3", "#00d4ff", "#ff00e5", "#f4ff00"],
+    ambients: {
+      off: { label: "Flat (current)", bg: "var(--bg)" },
+      a: { label: "A — Strobe Pulse", bg: "radial-gradient(circle at 8% -6%, rgba(0,255,163,0.28), transparent 42%), radial-gradient(circle at 92% 102%, rgba(255,0,229,0.24), transparent 42%), var(--bg)",
+        note: "Two alternating strobe-colored glows in opposite corners — laser green and magenta, like a club light rig mid-pulse." },
+      b: { label: "B — Circuit Grid", bg: "repeating-linear-gradient(90deg, rgba(0,255,163,0.08) 0 1px, transparent 1px 30px), repeating-linear-gradient(0deg, rgba(0,255,163,0.08) 0 1px, transparent 1px 30px), var(--bg)",
+        note: "A fine grid of thin lines — PCB traces, not a laser-tag floor — reading digital rather than industrial." },
+      img: { label: "C — Laser Rig (image)", type: "scene", scene: "technoLaserRig",
+        note: "A real club lighting rig: a fan of laser beams from an overhead point, a bottom-edge audio equalizer bar row, and scattered strobe flecks." },
+    },
+  },
+  beach: {
+    name: "Beach", accentName: "sun-bleached",
+    tokens: { bg: "#fbf1dd", paper: "#2b2118", accent: "#ff6b4a", whiteCardBg: "#fffdf6", whiteCardFg: "#2b2118", radius: "22px", font: '"Baloo 2", cursive', weight: "700", transform: "none",
+      cardBack: "repeating-linear-gradient(135deg, #ffb238 0 16px, #ff9f1f 16px 32px)" },
+    accents: ["#ff6b4a", "#ffb238", "#1f8f8a", "#ff5c8a"],
+    ambients: {
+      off: { label: "Flat", bg: "var(--bg)" },
+      a: { label: "Rich (shipped)", bg: "radial-gradient(circle at 90% -6%, rgba(255,178,56,0.35), transparent 45%), radial-gradient(circle at 6% 8%, rgba(31,143,138,0.16), transparent 40%), var(--bg)",
+        note: "Already live — sun glow top-right, cool ocean glow top-left. Shown here for reference alongside the new candidates." },
+      img: { label: "C — Ocean Sunset (image)", type: "scene", scene: "beachOceanSunset",
+        note: "A bright pastel sky, a plain sun (no retro stripes — this theme isn't retro), a gently wavy waterline, and a palm silhouette." },
+    },
+  },
+  parlour: {
+    name: "Parlour", accentName: "lamp-lit",
+    tokens: { bg: "#1a1410", paper: "#f1e9db", accent: "#d98a3d", whiteCardBg: "#efe6d8", whiteCardFg: "#1d1712", radius: "14px", font: '"Fraunces", serif', weight: "600", transform: "none",
+      cardBack: "linear-gradient(160deg, #2c2015, #171009 70%)" },
+    accents: ["#d98a3d", "#7ea08a", "#9c3d4a", "#c9a253"],
+    ambients: {
+      off: { label: "Flat (current)", bg: "var(--bg)" },
+      a: { label: "A — Lamp Glow", bg: "radial-gradient(circle at 14% -6%, rgba(217,138,61,0.38), transparent 50%), var(--bg)",
+        note: "A single warm amber glow from one top corner — a reading lamp lighting the table from one side." },
+      b: { label: "B — Fireplace Warmth", bg: "radial-gradient(circle at 50% 118%, rgba(217,138,61,0.34), transparent 55%), radial-gradient(ellipse at center, transparent 32%, rgba(0,0,0,0.5) 100%), var(--bg)",
+        note: "Warm light rising from below like firelight, with a deeper vignette up top — cozier, more enclosed." },
+      img: { label: "C — Lamp Room (image)", type: "scene", scene: "parlourLampRoom",
+        note: "A real reading-lamp silhouette with its light spilling down, plus a folded curtain edge opposite it for a genuine room feel." },
+    },
+  },
+  synthwave: {
+    name: "Synthwave", accentName: "80s sunset",
+    tokens: { bg: "#150a2e", paper: "#f6e8ff", accent: "#ff3ea5", whiteCardBg: "#fff4fb", whiteCardFg: "#1a0e2e", radius: "6px", font: '"Audiowide", sans-serif', weight: "400", transform: "uppercase",
+      cardBack: "linear-gradient(180deg, #2d0b53 0%, #7b1fa2 38%, #ff3ea5 68%, #ff8a3d 100%)" },
+    accents: ["#ff3ea5", "#8b2fd9", "#22e0ff", "#ff8a3d"],
+    ambients: {
+      off: { label: "Flat", bg: "var(--bg)" },
+      a: { label: "Rich (shipped)", bg: "radial-gradient(circle at 50% 105%, rgba(255,62,165,0.35), transparent 55%), radial-gradient(circle at 12% 0%, rgba(34,224,255,0.14), transparent 45%), var(--bg)",
+        note: "Already live — magenta glow rising from the bottom, faint cyan wash top-left. Shown here for reference." },
+      img: { label: "C — Sunset Scene (image)", type: "scene", scene: "synthwaveSunset",
+        note: "A real drawn scene, not just a glow: a sun over a receding grid horizon with a skyline silhouette — the genre's signature image. Colors follow the selected accent, same as every other option." },
+    },
+  },
+};
+
+let state = { theme: "felt", accentIndex: 0, ambient: "off" };
+
+const stage = document.getElementById("stage");
+const stageScene = document.getElementById("stageScene");
+const roomCode = document.getElementById("roomCode");
+const themeList = document.getElementById("themeList");
+const accentRow = document.getElementById("accentRow");
+const ambientList = document.getElementById("ambientList");
+const ambientNote = document.getElementById("ambientNote");
+const caption = document.getElementById("caption");
+
+// Fixed-seed pseudo-random source for scattered elements (cork flecks,
+// glow motes) - deterministic so positions stay put across re-renders
+// (an accent swap re-runs every scene generator) instead of jittering to
+// new spots every click, the way Math.random() would.
+function seeded(seed) {
+  let s = seed;
+  return () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+}
+
+// A soft irregular closed blob outline around (cx,cy) - n points at
+// baseR +/- variance, connected with quadratic curves through each
+// point's midpoint to its neighbor so the outline reads as organic
+// rather than a jagged polygon. Used by Felt & Ink's ink bloom.
+function blobPath(cx, cy, baseR, n, rand, variance) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const angle = (i / n) * Math.PI * 2;
+    const r = baseR * (1 - variance / 2 + rand() * variance);
+    pts.push([cx + Math.cos(angle) * r, cy + Math.sin(angle) * r]);
+  }
+  const mid0 = [(pts[0][0] + pts[n - 1][0]) / 2, (pts[0][1] + pts[n - 1][1]) / 2];
+  let d = `M ${mid0[0].toFixed(1)} ${mid0[1].toFixed(1)}`;
+  for (let i = 0; i < n; i++) {
+    const cur = pts[i];
+    const next = pts[(i + 1) % n];
+    const mid = [(cur[0] + next[0]) / 2, (cur[1] + next[1]) / 2];
+    d += ` Q ${cur[0].toFixed(1)} ${cur[1].toFixed(1)}, ${mid[0].toFixed(1)} ${mid[1].toFixed(1)}`;
+  }
+  return d + " Z";
+}
+
+// Drawn "image" scenes, not photos - real illustrations built from SVG
+// primitives so each stays accent-reactive like every other option here,
+// which a static raster image couldn't do. Every theme gets one, each
+// leaning on that theme's own identity rather than a shared template -
+// see the per-scene comments below for what each is going for.
+const SCENES = {
+  synthwaveSunset(accent) {
+    const bg = "#150a2e", mid = "#7b1fa2", warm = "#ff8a3d", dark = "#0d0619";
+    // horizonY sits high (not screen-center) deliberately: the real stage
+    // layout stacks header -> black card -> judging grid down the middle,
+    // so a classic dead-center sun would be fully hidden behind opaque UI.
+    // Placing the horizon in the gap just under the header instead means
+    // the sun and skyline read clearly there, and the grid - thin lines,
+    // not a solid shape - still shows through the gap below the judging
+    // grid and along the bottom edge even though most of its length
+    // passes behind the opaque cards in between.
+    const w = 1000, h = 625, horizonY = 200;
+    // Sun geometry derived from horizonY (not hardcoded) so repositioning
+    // the horizon can't leave the sun and its stripe-clip out of sync with
+    // it - the sun sits mostly above the horizon, dipping slightly below
+    // it (cy a touch above horizonY), same as the genre's classic pose.
+    const sunCx = 500, sunR = 118, sunCy = horizonY - 30;
+    const stars = [
+      [70,40,1.6,0.8],[140,70,1.1,0.5],[230,25,1.8,0.7],[330,55,1.2,0.6],
+      [430,20,1.4,0.9],[560,45,1.1,0.5],[640,15,1.7,0.7],[760,60,1.3,0.6],
+      [860,30,1.6,0.8],[930,70,1.1,0.5],[40,90,1.2,0.4],[970,90,1.3,0.5],
+    ];
+    const starsMarkup = stars.map(([x,y,r,o]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${warm}" opacity="${o}"/>`).join("");
+    // Stripe gaps cut into the sun's lower half, evenly spaced by fraction
+    // of its own radius so they scale with sunR automatically.
+    const stripeFracs = [[0.06,0.06],[0.24,0.08],[0.44,0.10],[0.66,0.13],[0.90,0.16]];
+    const stripeRects = stripeFracs.map(([yf, hf]) =>
+      `<rect x="${sunCx - sunR * 0.85}" y="${(sunCy + sunR * yf).toFixed(1)}" width="${sunR * 1.7}" height="${(sunR * hf).toFixed(1)}" fill="${bg}"/>`
+    ).join("");
+    const mtn = [
+      [0,0],[60,-18],[120,0],[190,-40],[260,0],[340,-14],[420,0],[500,-55],
+      [560,0],[640,-22],[720,0],[800,-36],[880,0],[940,-16],[1000,0],
+    ].map(([dx, dy]) => `${dx},${horizonY + dy}`).join(" ");
+    const svg = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${bg}"/><stop offset="60%" stop-color="${mid}"/><stop offset="100%" stop-color="${accent}"/>
+        </linearGradient>
+        <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${warm}"/><stop offset="100%" stop-color="${bg}"/>
+        </linearGradient>
+        <clipPath id="sunClip"><circle cx="${sunCx}" cy="${sunCy}" r="${sunR}"/></clipPath>
+      </defs>
+      <rect x="0" y="0" width="${w}" height="${horizonY}" fill="url(#sky)"/>
+      <rect x="0" y="${horizonY}" width="${w}" height="${h - horizonY}" fill="url(#ground)"/>
+      ${starsMarkup}
+      <g clip-path="url(#sunClip)">
+        <circle cx="${sunCx}" cy="${sunCy}" r="${sunR}" fill="${accent}"/>
+        ${stripeRects}
+      </g>
+      <polygon points="${mtn} 1000,${h} 0,${h}" fill="${dark}" opacity="0.88"/>
+      <line class="horizon-glow" x1="0" y1="${horizonY}" x2="${w}" y2="${horizonY}" stroke="${accent}" stroke-width="3" opacity="0.9"/>
+    </svg>`;
+    // The classic "flying down an infinite grid toward the horizon" look
+    // is a genuine CSS 3D effect, not something hand-faked SVG line
+    // positions can pull off - @keyframes only interpolates linearly, so
+    // animating y1/y2 directly gives constant-speed lines, never the
+    // accelerating-as-it-nears-the-viewer illusion of real perspective.
+    // A flat tiled grid pattern, tilted back with rotateX() under a
+    // perspective() parent, and simply scrolled at a CONSTANT background
+    // speed, comes out foreshortened by the 3D transform itself - the
+    // "moving fast when close, slow when far" look falls out for free
+    // instead of needing hand-tuned easing. top/height are percentages of
+    // the stage's own box (not the SVG's 1000x625 units) - 32% matches
+    // horizonY/h so the floor starts exactly where the SVG horizon sits.
+    const gridFloor = `<div class="synth-grid-floor">
+      <div class="plane" style="--grid-color:${accent};"></div>
+    </div>`;
+    return svg + gridFloor;
+  },
+
+  // Felt & Ink: ink dropped onto felt, spreading - an organic blob plus
+  // rippling rings, not a hard geometric shape, matching the theme's own
+  // "cool, on-brand" restraint. Sits low-right, out of the header/card
+  // column, with two small satellite droplets upper-left for balance.
+  feltInkBloom(accent) {
+    const rand = seeded(7);
+    const w = 1000, h = 625;
+    const main = blobPath(830, 560, 210, 9, rand, 0.4);
+    const drop1 = blobPath(150, 90, 46, 7, seeded(11), 0.4);
+    const drop2 = blobPath(230, 150, 26, 7, seeded(13), 0.4);
+    // Each ring expands and fades on its own loop (staggered start) so
+    // they read as continuously spreading ripples, not three fixed rings
+    // that happen to breathe in place.
+    const ripples = [260, 320, 385].map((r, i) => {
+      const o = (0.2 - i * 0.05).toFixed(2);
+      return `<circle class="ripple" cx="830" cy="560" r="${r}" fill="none" stroke="${accent}" stroke-width="1.4" opacity="${o}" style="--ripple-o:${o}; animation-duration:4s; animation-delay:${i * -1.3}s;"/>`;
+    }).join("");
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <path d="${main}" fill="${accent}" opacity="0.16"/>
+      <path d="${drop1}" fill="${accent}" opacity="0.12"/>
+      <path d="${drop2}" fill="${accent}" opacity="0.10"/>
+      ${ripples}
+    </svg>`;
+  },
+
+  // Bulletin: a literal corkboard - fleck texture across the whole board
+  // plus two pinned torn-paper corners, echoing the theme's own name
+  // rather than just reusing its jumbotron-glow palette.
+  bulletinCorkboard(accent) {
+    const rand = seeded(21);
+    const w = 1000, h = 625;
+    const flecks = Array.from({ length: 55 }, () => {
+      const x = (rand() * w).toFixed(1), y = (rand() * h).toFixed(1);
+      const r = (0.8 + rand() * 1.6).toFixed(1);
+      return `<circle cx="${x}" cy="${y}" r="${r}" fill="#8a6a45" opacity="${(0.12 + rand() * 0.14).toFixed(2)}"/>`;
+    }).join("");
+    // Scaled down and tucked into the header row's own open middle space
+    // (between the room-code/tag on the left and the phase pill on the
+    // right) - the only genuinely empty band on the real stage, since
+    // every other gap between header/card-black/judging-grid is too thin
+    // for a paper-corner shape at full size.
+    function pin(x, y, rot, scale, delay) {
+      return `<g transform="translate(${x},${y}) rotate(${rot}) scale(${scale})">
+        <polygon points="-46,-6 46,-14 40,54 -40,46" fill="#efe6d8" opacity="0.9"/>
+        <polygon points="-46,-6 -30,10 -40,46" fill="#00000022"/>
+        <circle cx="0" cy="18" r="8" fill="${accent}"/>
+        <circle class="twinkle" cx="-2.5" cy="15.5" r="2.4" fill="#ffffff" opacity="0.8" style="--flicker-lo:0.3; --flicker-hi:0.95; animation-duration:2.6s; animation-delay:${delay}s;"/>
+      </g>`;
+    }
+    // A jumbotron-style scanline sweeping top to bottom - the one
+    // animation idea specific to "Bulletin" as a name, not just its
+    // existing hazard/glow palette.
+    // Rests fully off-canvas above y=0 when static - the sweep only
+    // becomes visible once the translateY keyframe carries it downward.
+    const scanline = `<rect class="scanline" x="0" y="-30" width="${w}" height="30" fill="${accent}" style="opacity:0.12"/>`;
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      ${flecks}
+      ${scanline}
+      ${pin(430, 26, -6, 0.42, 0)}
+      ${pin(700, 32, 8, 0.42, -1.4)}
+    </svg>`;
+  },
+
+  // Neon: a glowing tube-sign outline (a bolt, the simplest shape that
+  // reads instantly as neon signage) plus scattered black-light paint
+  // flecks - the poster-room feel the gradient options gesture at, drawn
+  // as an actual sign rather than just corner glows.
+  neonBlackLightPoster(accent) {
+    const rand = seeded(33);
+    const w = 1000, h = 625;
+    const bolt = "M 830,40 L 770,150 L 815,150 L 760,270 L 870,120 L 822,120 Z";
+    const flecks = Array.from({ length: 16 }, () => {
+      const x = (rand() * w).toFixed(1), y = (rand() * (h * 0.75)).toFixed(1);
+      const r = (1.2 + rand() * 2.2).toFixed(1);
+      const o = (0.25 + rand() * 0.4).toFixed(2);
+      const dur = (1.6 + rand() * 2.2).toFixed(2), delay = (rand() * -3).toFixed(2);
+      return `<circle class="twinkle" cx="${x}" cy="${y}" r="${r}" fill="${accent}" opacity="${o}" style="--flicker-lo:${(o * 0.3).toFixed(2)}; --flicker-hi:${o}; animation-duration:${dur}s; animation-delay:${delay}s;"/>`;
+    }).join("");
+    // Both bolt layers (glow + crisp) share one flicker timeline - a real
+    // tube sign flickers as one object, not layer by layer.
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs><filter id="neonBlur" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7"/></filter></defs>
+      ${flecks}
+      <g class="neon-flicker">
+        <path d="${bolt}" fill="none" stroke="${accent}" stroke-width="10" opacity="0.45" filter="url(#neonBlur)"/>
+        <path d="${bolt}" fill="none" stroke="${accent}" stroke-width="3" opacity="0.95"/>
+      </g>
+    </svg>`;
+  },
+
+  // Site: a warehouse-rave rig - roof truss, two hanging fixtures with
+  // downward light cones, and a hazard-striped floor band. The literal
+  // industrial venue the gradient corner-spotlight option only implies.
+  siteWarehouse(accent) {
+    const w = 1000, h = 625;
+    const trussPts = [];
+    for (let x = 0; x <= w; x += 60) trussPts.push(`${x},${x % 120 === 0 ? 26 : 58}`);
+    // Swaying from the cable's own top attachment point (not the fixture's
+    // center) is what makes it read as hanging rather than just wobbling
+    // in place - transform-origin is set inline per fixture since each
+    // sits at a different x.
+    function fixture(x, delay) {
+      return `<g class="fixture-sway" style="transform-origin:${x}px 58px; animation-delay:${delay}s;">
+        <line x1="${x}" y1="58" x2="${x}" y2="120" stroke="#3a3a3a" stroke-width="2"/>
+        <polygon points="${x - 20},120 ${x + 20},120 ${x + 10},146 ${x - 10},146" fill="#1c1c1c" stroke="#444" stroke-width="1"/>
+        <polygon points="${x - 10},146 ${x + 10},146 ${x + 110},430 ${x - 110},430" fill="${accent}" opacity="0.14"/>
+      </g>`;
+    }
+    const stripeH = 34;
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="hazard" width="36" height="36" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+          <rect width="36" height="36" fill="#0d0d0e"/>
+          <rect width="18" height="36" fill="${accent}" opacity="0.5"/>
+        </pattern>
+      </defs>
+      <line x1="0" y1="26" x2="${w}" y2="26" stroke="#3a3a3a" stroke-width="2"/>
+      <polyline points="${trussPts.join(" ")}" fill="none" stroke="#3a3a3a" stroke-width="2"/>
+      ${fixture(260, 0)}${fixture(740, -1.6)}
+      <rect x="0" y="${h - stripeH}" width="${w}" height="${stripeH}" fill="url(#hazard)"/>
+    </svg>`;
+  },
+
+  // Techno: a minimal club rig, not a warehouse - a fan of laser beams
+  // from an overhead moving-head light, a small PCB-trace accent in the
+  // header's open space (the digital identity Site's hazard stripes
+  // don't carry), an audio-equalizer bar row along the bottom, and
+  // scattered strobe flecks.
+  technoLaserRig(accent) {
+    const rand = seeded(64);
+    const w = 1000, h = 625;
+    const originX = 500, originY = -20;
+    const beams = [-70, -50, -30, -12, 5, 22, 40, 60, 80].map((deg) => {
+      const rad = (deg * Math.PI) / 180, len = 340;
+      const ex = originX + Math.sin(rad) * len, ey = originY + Math.cos(rad) * len;
+      return `<line x1="${originX}" y1="${originY}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="${accent}" stroke-width="2" opacity="0.22"/>`;
+    }).join("");
+    const flecks = Array.from({ length: 14 }, () => {
+      const x = (rand() * w).toFixed(1), y = (rand() * h * 0.7).toFixed(1);
+      const o = (0.3 + rand() * 0.4).toFixed(2);
+      const dur = (0.4 + rand() * 0.6).toFixed(2), delay = (rand() * -1.5).toFixed(2);
+      return `<circle class="strobe-fleck" cx="${x}" cy="${y}" r="${(1 + rand() * 2).toFixed(1)}" fill="${accent}" opacity="${o}" style="--flicker-lo:${(o * 0.15).toFixed(2)}; --flicker-hi:${o}; animation-duration:${dur}s; animation-delay:${delay}s;"/>`;
+    }).join("");
+    // A couple of right-angle PCB traces with via-dots, tucked into the
+    // header's open middle band - same zone Bulletin's pins live in.
+    const trace = `<g stroke="${accent}" stroke-width="2" fill="none" opacity="0.55">
+      <path d="M 380,28 h 60 v 16 h 40"/>
+      <circle cx="380" cy="28" r="3" fill="${accent}" stroke="none"/>
+      <circle cx="480" cy="44" r="3" fill="${accent}" stroke="none"/>
+      <path d="M 640,40 h -50 v -14 h -30"/>
+      <circle cx="640" cy="40" r="3" fill="${accent}" stroke="none"/>
+      <circle cx="560" cy="26" r="3" fill="${accent}" stroke="none"/>
+    </g>`;
+    // Equalizer bars: a smooth-ish wave of heights (not pure random) so
+    // it reads as a levels display rather than noise. Each bar is drawn
+    // at its RESTING (max) height, then - only when animation is on -
+    // CSS scales it down and back up from a bottom-anchored origin, like
+    // a real level meter. Per-bar duration/delay are randomized so bars
+    // don't pulse in lockstep, same instinct as a real EQ never doing that.
+    const barCount = 26, barW = w / barCount;
+    const bars = Array.from({ length: barCount }, (_, i) => {
+      const t = i / barCount;
+      const bh = 14 + Math.abs(Math.sin(t * Math.PI * 3.2 + 0.6)) * 46 + rand() * 10;
+      const dur = (0.5 + rand() * 0.7).toFixed(2);
+      const delay = (rand() * -1.2).toFixed(2);
+      const minScale = (0.25 + rand() * 0.25).toFixed(2);
+      return `<rect class="eq-bar" x="${(i * barW + barW * 0.15).toFixed(1)}" y="${(h - bh).toFixed(1)}" width="${(barW * 0.7).toFixed(1)}" height="${bh.toFixed(1)}" fill="${accent}" opacity="0.4" style="--eq-min:${minScale}; animation-duration:${dur}s; animation-delay:${delay}s;"/>`;
+    }).join("");
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      ${flecks}
+      <g class="laser-fan" style="transform-origin:${originX}px ${originY}px;">${beams}</g>
+      ${trace}
+      ${bars}
+    </svg>`;
+  },
+
+  // Beach: bright, not dark like the rest - a pastel sky, a plain sun (no
+  // retro stripes, this theme isn't retro), a gently wavy waterline
+  // instead of a hard horizon, and a palm silhouette for a real place
+  // rather than an abstract glow.
+  beachOceanSunset(accent) {
+    const w = 1000, h = 625, horizonY = 200;
+    // Drawn from -250 to 1250 (one extra period past each visible edge),
+    // not just 0-1000 - a wave-scroll translateX(-250) is only seamless
+    // if there's already-drawn geometry covering the visible window at
+    // every point in the loop, and the path repeats exactly every 250
+    // units so a -250 shift lines back up with itself perfectly.
+    const waveHLines = [horizonY + 40, horizonY + 90, horizonY + 150].map((y, i) => {
+      const dur = (5 + i * 1.4).toFixed(1);
+      return `<path class="wave-scroll" d="M -250,${y} Q -125,${y - 10} 0,${y} T 250,${y} T 500,${y} T 750,${y} T 1000,${y} T 1250,${y}" fill="none" stroke="${accent}" stroke-width="2" opacity="${(0.3 - i * 0.07).toFixed(2)}" style="animation-duration:${dur}s;"/>`;
+    }).join("");
+    // Rooted at the very bottom edge, not vertical-center - the judging
+    // slots span nearly the full stage width in the middle band, so a
+    // ground-level silhouette anchored there is invisible behind them.
+    // The bottom strip below the grid (same zone Techno's hazard stripe
+    // uses) is the one place a tall shape actually clears the cards.
+    // Angle-based fan (not arbitrary offsets) keeps every frond's reach
+    // bounded by `len` regardless of direction.
+    const baseX = 45, baseY = h - 3, tipX = 34, tipY = baseY - 58;
+    const trunk = `<path d="M ${baseX},${baseY + 6} Q ${baseX - 10},${baseY - 30} ${tipX},${tipY}" fill="none" stroke="#2b2118" stroke-width="7" stroke-linecap="round"/>`;
+    const frondFan = [-160, -125, -90, -55, -25].map((deg) => {
+      const rad = (deg * Math.PI) / 180, len = 40, midLen = len * 0.55;
+      const ex = tipX + Math.cos(rad) * len, ey = tipY + Math.sin(rad) * len;
+      const mx = tipX + Math.cos(rad) * midLen + 9, my = tipY + Math.sin(rad) * midLen - 4;
+      return `<path d="M ${tipX},${tipY} Q ${mx.toFixed(1)},${my.toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}" fill="none" stroke="#2b2118" stroke-width="6" stroke-linecap="round"/>`;
+    }).join("");
+    const palm = trunk + frondFan;
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="beachSky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#fff3d6"/><stop offset="100%" stop-color="${accent}"/>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="${w}" height="${horizonY + 60}" fill="url(#beachSky)"/>
+      <circle cx="500" cy="${horizonY - 10}" r="85" fill="${accent}" opacity="0.85"/>
+      ${waveHLines}
+      ${palm}
+    </svg>`;
+  },
+
+  // Parlour: a reading lamp in the corner with its light spilling down,
+  // plus a folded curtain edge opposite it - the literal cozy room the
+  // amber corner-glow option only gestures at.
+  parlourLampRoom(accent) {
+    const w = 1000, h = 625;
+    const lamp = `<g transform="translate(70,20)">
+      <ellipse cx="0" cy="95" rx="14" ry="4" fill="#0f0b07"/>
+      <line x1="0" y1="20" x2="0" y2="95" stroke="#0f0b07" stroke-width="4"/>
+      <polygon points="-38,20 38,20 24,-14 -24,-14" fill="#0f0b07"/>
+      <polygon class="lamp-flicker" points="-24,-14 24,-14 60,120 -60,120" fill="${accent}" opacity="0.16"/>
+    </g>`;
+    const rand = seeded(51);
+    const curtains = Array.from({ length: 5 }, (_, i) => {
+      const x = w - 30 - i * 26;
+      const amp = 10 + rand() * 6;
+      return `<path d="M ${x},0 Q ${x - amp},${h / 2} ${x},${h}" fill="none" stroke="#0f0b07" stroke-width="10" opacity="0.5"/>`;
+    }).join("");
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      ${curtains}
+      ${lamp}
+    </svg>`;
+  },
+};
+
+function render() {
+  const t = THEMES[state.theme];
+  stage.dataset.theme = state.theme;
+  stage.dataset.ambient = state.ambient;
+  stage.style.setProperty("--bg", t.tokens.bg);
+  stage.style.setProperty("--paper", t.tokens.paper);
+  stage.style.setProperty("--accent", t.accents[state.accentIndex]);
+  stage.style.setProperty("--white-card-bg", t.tokens.whiteCardBg);
+  stage.style.setProperty("--white-card-fg", t.tokens.whiteCardFg);
+  stage.style.setProperty("--card-radius", t.tokens.radius);
+  stage.style.setProperty("--display-font", t.tokens.font);
+  stage.style.setProperty("--display-weight", t.tokens.weight);
+  stage.style.setProperty("--card-black-transform", t.tokens.transform);
+  stage.style.setProperty("--card-back-pattern", t.tokens.cardBack);
+  const amb = t.ambients[state.ambient] || t.ambients.off;
+  const accentColor = t.accents[state.accentIndex];
+  if (amb.type === "scene") {
+    stage.style.background = t.tokens.bg;
+    stageScene.innerHTML = SCENES[amb.scene](accentColor);
+  } else {
+    stageScene.innerHTML = "";
+    stage.style.background = amb.bg.replaceAll("var(--bg)", t.tokens.bg).replaceAll("var(--accent)", accentColor);
+  }
+  roomCode.textContent = state.theme.toUpperCase().slice(0, 4);
+
+  // Theme list
+  themeList.innerHTML = "";
+  Object.entries(THEMES).forEach(([key, th]) => {
+    const btn = document.createElement("button");
+    btn.className = "theme-btn" + (key === state.theme ? " selected" : "");
+    btn.innerHTML = `<span class="swatch" style="background:${th.tokens.bg}"></span>${th.name}<span class="badge">${th.accentName}</span>`;
+    btn.onclick = () => { state.theme = key; state.accentIndex = 0; state.ambient = "off"; render(); };
+    themeList.appendChild(btn);
+  });
+
+  // Accent row
+  accentRow.innerHTML = "";
+  t.accents.forEach((color, i) => {
+    const b = document.createElement("button");
+    b.className = "accent-dot" + (i === state.accentIndex ? " selected" : "");
+    b.style.background = color;
+    b.onclick = () => { state.accentIndex = i; render(); };
+    accentRow.appendChild(b);
+  });
+
+  // Ambient list
+  ambientList.innerHTML = "";
+  Object.entries(t.ambients).forEach(([key, a]) => {
+    const btn = document.createElement("button");
+    btn.className = "ambient-btn" + (key === state.ambient ? " selected" : "");
+    btn.innerHTML = `<span class="dot"></span>${a.label}`;
+    btn.onclick = () => { state.ambient = key; render(); };
+    ambientList.appendChild(btn);
+  });
+  ambientNote.textContent = amb.note || "The current shipped default — no atmosphere layer, just the flat theme color.";
+  caption.textContent = `${t.name} — ${(t.ambients[state.ambient] || t.ambients.off).label}`;
+}
+
+const facedownSlider = document.getElementById("facedownOpacity");
+const facedownValue = document.getElementById("facedownOpacityValue");
+facedownSlider.addEventListener("input", () => {
+  const pct = Number(facedownSlider.value);
+  stage.style.setProperty("--facedown-opacity", pct / 100);
+  facedownValue.textContent = pct + "%";
+});
+
+// The class lives on #stageScene itself, not its children, so it isn't
+// touched when render() replaces stageScene.innerHTML on every theme/
+// ambient switch - set once here, stays correct across re-renders.
+const animateToggle = document.getElementById("animateToggle");
+function applyAnimateState() {
+  stageScene.classList.toggle("animate", animateToggle.checked);
+}
+animateToggle.addEventListener("change", applyAnimateState);
+applyAnimateState();
+
+render();
+</script>
+
+</body>
+</html>

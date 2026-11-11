@@ -1,0 +1,40 @@
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.log
+
+# Server runtime data (created on first run at the default paths).
+table-style-presets.json
+pack-selection-presets.json
+game-setup-presets.json
+custom-cards.json
+custom-sets.json
+admin-password.json
+core-set.json
+game-name.json
+default-theme.json
+.DS_Store
+Thumbs.db
+
+# The full third-party card corpus - large (~5MB) and of unclear per-pack
+# licensing for a public repo. The bundled sample-cards.json (tracked, see
+# below) is what a fresh install actually ships with; this file, if present
+# locally, is picked up via the CARD_DATA_PATH env var or uploaded as a Core
+# Set through the admin panel instead - see server/src/cards/coreSet.ts.
+cah-cards-full.json
+
+# docker-compose.yml's bind-mounted data directory (VM-only, holds the
+# same runtime JSON files listed above plus whatever else lands in /data).
+/data/
+
+# Private, machine-specific files kept out of the public repo.
+# CLAUDE.local.md holds deployment notes (hosts, domains, tunnel IDs);
+# scripts/deploy.ps1 is the operator's own Windows/NSSM production deploy.
+CLAUDE.local.md
+scripts/deploy.ps1
+.claude/settings.local.json
+.vscode/

@@ -1,0 +1,21 @@
+node_modules
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+.git
+.vscode
+test
+*.log
+
+# Runtime data files (see .gitignore) - these belong in the mounted /data
+# volume, never baked into the image from whatever happens to be on the
+# machine doing the build.
+table-style-presets.json
+pack-selection-presets.json
+game-setup-presets.json
+custom-cards.json
+custom-sets.json
+
+# docs/mockups is served at runtime (server/src/index.ts) and must NOT be
+# excluded - only the design-doc source assets outside that folder, if any
+# get added later, would go here.
