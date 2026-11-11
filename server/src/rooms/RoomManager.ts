@@ -1,43 +1,77 @@
 import type { Server } from "socket.io";
 import type { ClientToServerEvents, Role, ServerToClientEvents } from "@tabletop-judge/shared";
-import { generateRoomCode, normalizeRoomCode, THEMES_REQUIRING_SPOTLIGHT } from "@tabletop-judge/shared";
+import { normalizeRoomCode, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, THEMES_REQUIRING_SPOTLIGHT } from "@tabletop-judge/shared";
+import { RoomRegistry, type CloseCause, type RoomOverview, type SessionKind } from "@bargames/gamekit/server";
+import { nanoid } from "nanoid";
 import type { LoadedCardData } from "../cards/loader.js";
 import type { DefaultTheme } from "../tableStyle/store.js";
 import { getDefaultRoleNames } from "../roleNames/store.js";
 import { ROOM_INACTIVITY_TTL_MS, ROOM_SWEEP_INTERVAL_MS } from "../config.js";
-import { Room, type RoomGameEvent, type RoomOverview } from "./Room.js";
-import { nanoid } from "nanoid";
+import { Room, type RoomGameEvent } from "./Room.js";
 import { RoomError } from "./errors.js";
 import { log } from "../util/logger.js";
 
 type IO = Server<ClientToServerEvents, ServerToClientEvents>;
 
-/** Why a room closed - sent as room_closed's reason. Same values as
- * @bargames/gamekit's CloseCause, so the registry can replace this. */
-export type CloseCause = "host" | "admin" | "idle" | "error" | "shutdown";
+export type { CloseCause };
 
-/** Where room lifecycle events go: a Bar Games box (server/src/bargames.ts),
- * or nowhere when standalone. Fire-and-forget; must never throw. */
-export interface RoomEventSink {
-  emit(type: RoomGameEvent | "room_created" | "room_closed", room: Room, data?: Record<string, unknown>): void;
-}
+/** In-game moments a Room reports (round_started, winner, ...). Room
+ * lifecycle (created/closed/players_changed) comes from the registry's own
+ * events instead - see `registry.on`. */
+export type RoomGameEventListener = (type: Exclude<RoomGameEvent, "players_changed">, room: Room, data: Record<string, unknown>) => void;
 
-/** players_changed at most this often per room (SDK guidance: 2 s). */
-const PLAYERS_CHANGED_DEBOUNCE_MS = 2000;
+const FATAL_REASON =
+  "Something went wrong on our end and this game had to stop — sorry! This app is a work in progress. Start a new room to play again.";
 
+/**
+ * The game's view of its rooms. Bookkeeping - codes, the idle sweep, close
+ * causes, lifecycle events, players_changed debouncing, status overviews -
+ * is @bargames/gamekit's RoomRegistry; this adds what is No Filter's own:
+ * seeding new rooms from the deployment defaults, seating the creator,
+ * venue rooms' controller key, and the card data and theme new rooms get.
+ */
 export class RoomManager {
-  private rooms = new Map<string, Room>();
+  readonly registry: RoomRegistry<Room>;
   private readonly io: IO;
   private cardData: LoadedCardData;
   private defaultTheme: DefaultTheme;
-  private events: RoomEventSink | null = null;
-  private playersChangedTimers = new Map<string, NodeJS.Timeout>();
+  private gameEventListener: RoomGameEventListener | null = null;
 
   constructor(io: IO, cardData: LoadedCardData, defaultTheme: DefaultTheme) {
     this.io = io;
     this.cardData = cardData;
     this.defaultTheme = defaultTheme;
-    setInterval(() => this.sweepIdleRooms(), ROOM_SWEEP_INTERVAL_MS).unref();
+    this.registry = new RoomRegistry<Room>({
+      create: (code, kind, ctx) => {
+        const room = new Room(code, this.io, this.cardData);
+        room.kind = kind;
+        this.applyDefaults(room);
+        // Contain a broken room to itself: its players are told the game
+        // ended and why; every other room carries on untouched.
+        room.onFatalError = () => ctx.close(FATAL_REASON, "error");
+        room.onGameEvent = (type, data) => {
+          if (type === "players_changed") this.registry.notePlayers(room);
+          else this.gameEventListener?.(type, room, data);
+        };
+        return room;
+      },
+      // No cap: this game never had one (a deployment is a handful of rooms).
+      maxRooms: Number.POSITIVE_INFINITY,
+      idleMinutes: () => ROOM_INACTIVITY_TTL_MS / 60_000,
+      sweepIntervalMs: ROOM_SWEEP_INTERVAL_MS,
+      idleReason: "Room closed after an hour of inactivity.",
+      errorReason: FATAL_REASON,
+      // Same codes as ever: 5 characters, digits and letters without 0/O/1/I.
+      codeLength: ROOM_CODE_LENGTH,
+      codeAlphabet: ROOM_CODE_ALPHABET,
+      normalizeCode: normalizeRoomCode,
+      log,
+    });
+  }
+
+  /** Bar Games: where in-game moments (round_started, winner, ...) go. */
+  onGameEvent(fn: RoomGameEventListener | null): void {
+    this.gameEventListener = fn;
   }
 
   getCardData(): LoadedCardData {
@@ -46,68 +80,57 @@ export class RoomManager {
 
   /** Swaps the card data used by every room created from now on (e.g. after
    * an admin uploads a new Core Set). A Room captures its own reference to
-   * this at construction time (see Room.ts's constructor), so rooms already
-   * in progress keep playing with whatever they started with - deliberate,
-   * so an upload mid-session can't change the deck out from under an active
-   * game. No restart required either way. */
+   * this at construction time, so rooms already in progress keep playing
+   * with whatever they started with - an upload mid-session can't change
+   * the deck out from under an active game. No restart required. */
   setCardData(cardData: LoadedCardData): void {
     this.cardData = cardData;
   }
 
-  /** Changes the theme/accent every room created from now on starts with.
-   * Like setCardData, only forward-looking - a room's `tableStyle` is its
-   * own mutable state from the moment it's created (a host can already
-   * change it from the Lobby), so this only affects the choice new rooms
-   * are seeded with, never rewrites an active room's current look. */
+  /** Changes the look every room created from now on starts with. Only
+   * forward-looking: a room's tableStyle is its own from the moment it's
+   * created (a host can change it from the Lobby). */
   setDefaultTheme(defaultTheme: DefaultTheme): void {
     this.defaultTheme = defaultTheme;
   }
 
-  /** Connects room lifecycle events to a Bar Games box (see bargames.ts). */
-  setEventSink(sink: RoomEventSink | null): void {
-    this.events = sink;
-  }
-
-  private emit(type: Parameters<RoomEventSink["emit"]>[0], room: Room, data?: Record<string, unknown>): void {
-    try {
-      this.events?.emit(type, room, data);
-    } catch (err) {
-      log.warn("room", "event sink failed", { code: room.code, type, err: String(err) });
-    }
+  getRoom(code: string): Room | undefined {
+    return this.registry.get(code);
   }
 
   /** Every open room, most recently active first (Bar Games status). */
   overviews(): RoomOverview[] {
-    return [...this.rooms.values()].sort((a, b) => b.lastActivityAt - a.lastActivityAt).map((r) => r.toOverview());
-  }
-
-  getRoom(code: string): Room | undefined {
-    return this.rooms.get(normalizeRoomCode(code));
+    return this.registry.overviews();
   }
 
   createRoom(hostName: string, role: Role, socketId: string) {
-    const room = this.newRoom(this.freshCode());
-    this.applyDefaults(room);
-    const { player, token } = room.addOrReconnectPlayer(hostName, role, undefined, socketId);
-    this.register(room);
-    return { room, player, token };
+    let seat!: ReturnType<Room["addOrReconnectPlayer"]>;
+    // Seat the creator before room_created fires.
+    const room = this.registry.create("patron", (r) => {
+      seat = r.addOrReconnectPlayer(hostName, role, undefined, socketId);
+    });
+    return { room, player: seat.player, token: seat.token };
   }
 
-  private freshCode(): string {
-    let code: string;
-    do {
-      code = generateRoomCode();
-    } while (this.rooms.has(code));
-    return code;
-  }
-
-  private newRoom(code: string): Room {
-    return new Room(code, this.io, this.cardData);
+  /**
+   * Bar Games "create_room": a room with no host phone, for the venue's TVs.
+   * Nobody becomes host by joining it; the box drives it with commands, and
+   * staff get host authority from the returned key (see Room.venueKey). The
+   * registry keeps it open while a Table shows it, until "end" closes it.
+   */
+  createVenueRoom(title?: string): { room: Room; venueKey: string } {
+    const venueKey = nanoid(24);
+    const kind: SessionKind = "venue";
+    const room = this.registry.create(kind, (r) => {
+      r.title = title?.trim().slice(0, 60) || undefined;
+      r.venueKey = venueKey;
+    });
+    return { room, venueKey };
   }
 
   /** Seeds a brand-new room from the deployment defaults (role names, look).
    * Forward-looking only: a room already in progress keeps what it started
-   * with. Shared by phone/Table rooms and Bar Games venue rooms. */
+   * with. */
   private applyDefaults(room: Room): void {
     room.roleNames = { ...getDefaultRoleNames() };
     room.tableStyle = {
@@ -126,52 +149,6 @@ export class RoomManager {
     };
   }
 
-  private register(room: Room): void {
-    // Contain a broken room to itself: its players get told the game ended
-    // and why, every other room in the process carries on untouched.
-    room.onFatalError = () => {
-      this.closeRoom(
-        room.code,
-        "Something went wrong on our end and this game had to stop — sorry! This app is a work in progress. Start a new room to play again.",
-        "error"
-      );
-    };
-    room.onGameEvent = (type, data) => {
-      if (type === "players_changed") this.schedulePlayersChanged(room);
-      else this.emit(type, room, data);
-    };
-    this.rooms.set(room.code, room);
-    this.emit("room_created", room, room.title ? { title: room.title } : undefined);
-  }
-
-  /** Coalesces join/leave/kick bursts into one players_changed per room. */
-  private schedulePlayersChanged(room: Room): void {
-    if (!this.events || this.playersChangedTimers.has(room.code)) return;
-    const timer = setTimeout(() => {
-      this.playersChangedTimers.delete(room.code);
-      if (this.rooms.get(room.code) === room) this.emit("players_changed", room, { players: room.playerCount() });
-    }, PLAYERS_CHANGED_DEBOUNCE_MS);
-    timer.unref();
-    this.playersChangedTimers.set(room.code, timer);
-  }
-
-  /**
-   * Bar Games "create_room": a room with no host phone, for the venue's TVs.
-   * Nobody becomes host by joining it; the box drives it with commands, and
-   * staff get host authority from the returned key (see Room.venueKey). It
-   * stays open while a Table shows it, until "end" closes it.
-   */
-  createVenueRoom(title?: string): { room: Room; venueKey: string } {
-    const room = this.newRoom(this.freshCode());
-    this.applyDefaults(room);
-    room.kind = "venue";
-    room.title = title?.trim().slice(0, 60) || undefined;
-    room.venueKey = nanoid(24);
-    this.register(room);
-    return { room, venueKey: room.venueKey };
-  }
-
-
   joinRoom(
     rawCode: string,
     name: string,
@@ -180,61 +157,26 @@ export class RoomManager {
     socketId: string,
     venueKey?: string
   ) {
-    const code = normalizeRoomCode(rawCode);
-    const room = this.rooms.get(code);
+    const room = this.registry.get(rawCode);
     if (!room) throw new RoomError("ROOM_NOT_FOUND", "No room with that code.");
     const { player, token: outToken } = room.addOrReconnectPlayer(name, role, token, socketId, venueKey);
     return { room, player, token: outToken };
   }
 
-  /** Runs on an interval with nothing above it on the stack, so a throw
-   * here would otherwise reach the process as an uncaughtException. One bad
-   * room must not stop the others from being swept (or kill the server), so
-   * each room is closed independently and failures are logged, not thrown. */
-  private sweepIdleRooms(): void {
-    const now = Date.now();
-    for (const [code, room] of this.rooms) {
-      try {
-        // A venue room on a TV is "in use" even when nobody's playing.
-        if (room.kind === "venue" && room.tableCount() > 0) continue;
-        if (now - room.lastActivityAt > ROOM_INACTIVITY_TTL_MS) {
-          this.closeRoom(code, "Room closed after an hour of inactivity.", "idle");
-        }
-      } catch (err) {
-        log.error("roomManager", "sweep failed - dropping room from the registry", { code, err: String(err) });
-        this.rooms.delete(code);
-        this.emit("room_closed", room, { reason: "error" });
-      }
-    }
-  }
-
-  // ---------- Host-machine-only admin operations (see server/src/admin) ----------
-
   listRoomSummaries() {
-    return [...this.rooms.values()].map((room) => room.getAdminSummary());
+    return this.registry.all().map((room) => room.getAdminSummary());
   }
 
   /** The one way a room closes - host, admin, idle sweep, a room's own fatal
-   * error, the box's "end" and shutdown all come through here, so this is
-   * where room_closed is emitted and where the room leaves status. */
+   * error, the box's "end" and shutdown all come through the registry's
+   * closeRoom, which removes it from status and emits room_closed. */
   closeRoom(code: string, reason: string, cause: CloseCause = "admin"): boolean {
-    const room = this.rooms.get(normalizeRoomCode(code));
-    if (!room) return false;
-    log.info("room", "closed", { code: room.code, phase: room.phase, reason, cause });
-    this.rooms.delete(room.code);
-    clearTimeout(this.playersChangedTimers.get(room.code));
-    this.playersChangedTimers.delete(room.code);
-    try {
-      room.closeRoom(reason);
-    } finally {
-      this.emit("room_closed", room, { reason: cause });
-    }
-    return true;
+    return this.registry.closeRoom(code, reason, cause);
   }
 
   closeAllRooms(reason: string, cause: CloseCause = "admin"): number {
-    const codes = [...this.rooms.keys()];
-    for (const code of codes) this.closeRoom(code, reason, cause);
-    return codes.length;
+    const count = this.registry.size;
+    this.registry.closeAll(reason, cause);
+    return count;
   }
 }

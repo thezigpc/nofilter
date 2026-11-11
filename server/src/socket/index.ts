@@ -221,7 +221,7 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
           code: room.code,
           name: player.name,
           role,
-          phase: room.phase,
+          phase: room.phase(),
         });
         const ack: JoinAck = { ok: true, token: outToken, roomCode: room.code };
         cb(ack);

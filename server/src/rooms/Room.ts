@@ -87,14 +87,14 @@ import { shuffle } from "../util/shuffle.js";
 import { log } from "../util/logger.js";
 import { RoomError } from "./errors.js";
 import type { DoubleDownPendingOffer, ServerPlayer, SubmissionEntry } from "./types.js";
+import type { CloseCause, KitRoom, SessionKind } from "@bargames/gamekit/server";
 import { autoSubmitWildCard, createWildCardPlayer, dealToWildCard, WILD_CARD_PLAYER_ID } from "./houseRules/wildCard.js";
 import { canOfferDoubleDown, isEligibleToWager } from "./houseRules/doubleDown.js";
 import { ACTION_CARD_TIER_WEIGHTS, HAND_SIZE, HOST_CLAIM_AFTER_SECONDS, ROUND_END_DELAY_MS } from "../config.js";
 
 type IO = Server<ClientToServerEvents, ServerToClientEvents>;
 
-/** Bar Games session kinds this game uses (see bargames.json). */
-export type SessionKind = "venue" | "patron";
+export type { SessionKind };
 
 /** Lifecycle moments a Room reports through onGameEvent. room_created and
  * room_closed are RoomManager's, since only it sees every create and close. */
@@ -109,20 +109,6 @@ export function hasHostAuthority(player: ServerPlayer): boolean {
   return player.isHost || !!player.isVenueController;
 }
 
-/** One room as Bar Games' status (and its Rooms page) sees it. Field names
- * match @bargames/gamekit's RoomOverview so that registry can replace this. */
-export interface RoomOverview {
-  code: string;
-  kind: SessionKind;
-  players: number;
-  phase: string;
-  title?: string;
-  hostConnected?: boolean;
-  hostName?: string;
-  tables: number;
-  createdAt: string;
-  lastActivityAt: string;
-}
 
 // Third-party packs in large card corpora frequently republish the same
 // card text as official packs or as each other. Comparing trimmed/lowercased
@@ -158,9 +144,9 @@ export function customSetToPackSummary(set: CustomSet): PackSummary {
   };
 }
 
-export class Room {
+export class Room implements KitRoom {
   readonly code: string;
-  phase: Phase = "lobby";
+  gamePhase: Phase = "lobby";
   houseRules: HouseRules = { ...DEFAULT_HOUSE_RULES };
   winCondition: WinCondition = { ...DEFAULT_WIN_CONDITION };
   deckOptions: DeckOptions = { ...DEFAULT_DECK_OPTIONS };
@@ -309,7 +295,7 @@ export class Room {
         // submitted (nothing to top up for otherwise).
         if (
           this.houseRules.autoDraw &&
-          this.phase === "submission" &&
+          this.gamePhase === "submission" &&
           existing.role === "player" &&
           !existing.isWildCard &&
           !this.hasNormalSubmission(existing.id)
@@ -363,7 +349,7 @@ export class Room {
     // personalCards is excluded here too - no round has happened yet, so
     // there's nothing to catch up on, and judgeOrder gets rebuilt fresh from
     // current players when that window closes anyway (see beginFirstRound).
-    if (role === "player" && this.phase !== "lobby" && this.phase !== "gameEnd" && this.phase !== "personalCards") {
+    if (role === "player" && this.gamePhase !== "lobby" && this.gamePhase !== "gameEnd" && this.gamePhase !== "personalCards") {
       this.judgeOrder.push(id);
       this.midGameExcused.add(id);
       if (this.houseRules.catchUpNewPlayers) {
@@ -408,7 +394,7 @@ export class Room {
     // became host, drops before hitting Start). Mid-game disconnects
     // intentionally keep your seat and everything about it, host status
     // included — see CLAUDE.md on reconnect being first-class.
-    if (this.phase === "lobby" && player.isHost) {
+    if (this.gamePhase === "lobby" && player.isHost) {
       const candidates = [...this.players.values()].filter(
         (p) => p.id !== playerId && p.role === "player" && !p.isWildCard
       );
@@ -500,28 +486,38 @@ export class Room {
     return [...this.players.values()].filter((p) => p.role === "table" && p.connected).length;
   }
 
-  toOverview(): RoomOverview {
+  // ---------- KitRoom: what the game kit's RoomRegistry reads ----------
+  // (status for Bar Games' Rooms page, the idle sweep, lifecycle events)
+
+  phase(): string {
+    return this.gamePhase;
+  }
+
+  /** The round in play (or the last one decided, at GameEnd). */
+  round(): number | undefined {
+    return this.lastStartedRound || undefined;
+  }
+
+  /** A venue room has no player host; its "host" is the staff controller. */
+  hostConnected(): boolean {
     const host = [...this.players.values()].find((p) => p.isHost);
-    const controllers = [...this.players.values()].filter((p) => p.isVenueController);
-    return {
-      code: this.code,
-      kind: this.kind,
-      players: this.playerCount(),
-      phase: this.phase,
-      ...(this.title ? { title: this.title } : {}),
-      // A venue room has no player host; its "host" is the staff controller.
-      hostConnected: host ? host.connected : controllers.some((c) => c.connected),
-      ...(host ? { hostName: host.name } : {}),
-      tables: this.tableCount(),
-      createdAt: new Date(this.createdAt).toISOString(),
-      lastActivityAt: new Date(this.lastActivityAt).toISOString(),
-    };
+    if (host) return host.connected;
+    return [...this.players.values()].some((p) => p.isVenueController && p.connected);
+  }
+
+  hostName(): string | undefined {
+    return [...this.players.values()].find((p) => p.isHost)?.name;
+  }
+
+  /** Called by the registry's closeRoom (every close path). */
+  close(reason: string, _cause: CloseCause): void {
+    this.closeRoom(reason);
   }
 
   getAdminSummary() {
     return {
       code: this.code,
-      phase: this.phase,
+      phase: this.gamePhase,
       playerCount: this.players.size,
       connectedCount: [...this.players.values()].filter((p) => p.connected).length,
       lastActivityAt: this.lastActivityAt,
@@ -540,7 +536,7 @@ export class Room {
     const player = this.players.get(playerId);
     if (!player) return;
 
-    if (this.phase === "lobby") {
+    if (this.gamePhase === "lobby") {
       this.removePlayerInternal(playerId);
       this.broadcast();
       return;
@@ -558,10 +554,10 @@ export class Room {
       return;
     }
 
-    if (wasJudge && (this.phase === "submission" || this.phase === "reveal" || this.phase === "judging")) {
+    if (wasJudge && (this.gamePhase === "submission" || this.gamePhase === "reveal" || this.gamePhase === "judging")) {
       this.clearTimer();
       this.dealPhase();
-    } else if (this.phase === "submission") {
+    } else if (this.gamePhase === "submission") {
       this.maybeAdvanceToReveal();
     }
     this.broadcast();
@@ -583,14 +579,14 @@ export class Room {
       this.io.sockets.sockets.get(removedSocketId)?.leave(this.code);
     }
 
-    if (wasJudge && (this.phase === "submission" || this.phase === "reveal" || this.phase === "judging")) {
+    if (wasJudge && (this.gamePhase === "submission" || this.gamePhase === "reveal" || this.gamePhase === "judging")) {
       this.clearTimer();
       if (this.judgeOrder.length < 2) {
         this.resetToLobby();
       } else {
         this.dealPhase();
       }
-    } else if (this.phase === "submission") {
+    } else if (this.gamePhase === "submission") {
       this.maybeAdvanceToReveal();
     }
 
@@ -970,7 +966,7 @@ export class Room {
   }
 
   private requireLobby(): void {
-    if (this.phase !== "lobby") {
+    if (this.gamePhase !== "lobby") {
       throw new RoomError("GAME_IN_PROGRESS", "Can't change settings once the game has started.");
     }
   }
@@ -1027,7 +1023,7 @@ export class Room {
     this.roundsPlayed = 0;
 
     if (this.houseRules.personalCards) {
-      this.phase = "personalCards";
+      this.gamePhase = "personalCards";
       this.clearTimer();
       const ms = this.personalCardsWindowMinutes * 60_000;
       this.personalCardsDeadline = Date.now() + ms;
@@ -1060,7 +1056,7 @@ export class Room {
    * normal win. */
   endGame(playerId: string): void {
     this.requireHost(playerId);
-    if (this.phase === "lobby" || this.phase === "gameEnd") {
+    if (this.gamePhase === "lobby" || this.gamePhase === "gameEnd") {
       throw new RoomError("WRONG_PHASE", "No game in progress to end.");
     }
     this.endGameNow();
@@ -1072,7 +1068,7 @@ export class Room {
   private endGameNow(): void {
     this.clearTimer();
     this.finalResult = this.buildFinalResult();
-    this.phase = "gameEnd";
+    this.gamePhase = "gameEnd";
     this.broadcast();
   }
 
@@ -1082,7 +1078,7 @@ export class Room {
    * (which already rebuilds the deck and reshuffles the Judge order). */
   playAgain(playerId: string): void {
     this.requireHost(playerId);
-    if (this.phase !== "gameEnd") throw new RoomError("WRONG_PHASE", "Can only start a new game once one has ended.");
+    if (this.gamePhase !== "gameEnd") throw new RoomError("WRONG_PHASE", "Can only start a new game once one has ended.");
     this.resetToLobby();
     this.broadcast();
   }
@@ -1129,7 +1125,7 @@ export class Room {
     this.judgeOrder = [];
     this.judgeIndex = 0;
 
-    this.phase = "lobby";
+    this.gamePhase = "lobby";
   }
 
   /** Shared by skipBlackCard and submitCustomBlackCard: anyone who'd
@@ -1180,7 +1176,7 @@ export class Room {
     if (!hasHostAuthority(player) && !isJudge) {
       throw new RoomError("NOT_HOST", `Only the host or the ${this.roleNames.judge} can skip the black card.`);
     }
-    if (this.phase !== "submission") {
+    if (this.gamePhase !== "submission") {
       throw new RoomError("WRONG_PHASE", "Can only skip the black card during submission.");
     }
     if (!this.currentBlackCard) throw new RoomError("NO_BLACK_CARD", "No black card in play.");
@@ -1205,7 +1201,7 @@ export class Room {
     if (!hasHostAuthority(player) && !isJudge) {
       throw new RoomError("NOT_HOST", `Only the host or the current ${this.roleNames.judge} can skip the ${this.roleNames.judge}'s turn.`);
     }
-    if (this.phase !== "submission" && this.phase !== "reveal" && this.phase !== "judging") {
+    if (this.gamePhase !== "submission" && this.gamePhase !== "reveal" && this.gamePhase !== "judging") {
       throw new RoomError("WRONG_PHASE", `Can only skip the ${this.roleNames.judge}'s turn while a round is in progress.`);
     }
     if (this.judgeOrder.length === 0) throw new RoomError("NO_JUDGE", `No ${this.roleNames.judge} rotation to skip.`);
@@ -1222,7 +1218,7 @@ export class Room {
    * them. They keep their seat/hand and are required again next round. */
   excusePlayerThisRound(hostId: string, targetId: string): void {
     this.requireHost(hostId);
-    if (this.phase !== "submission") {
+    if (this.gamePhase !== "submission") {
       throw new RoomError("WRONG_PHASE", "Can only skip a player's turn during submission.");
     }
     const target = this.players.get(targetId);
@@ -1250,7 +1246,7 @@ export class Room {
     if (!player || player.id !== this.currentJudgeId()) {
       throw new RoomError("NOT_JUDGE", `Only the ${this.roleNames.judge} can write a custom prompt.`);
     }
-    if (this.phase !== "submission") {
+    if (this.gamePhase !== "submission") {
       throw new RoomError("WRONG_PHASE", "Can only set a custom prompt during submission.");
     }
     const cleanText = text.trim().slice(0, 300);
@@ -1269,7 +1265,7 @@ export class Room {
     if (!this.houseRules.handRefresh) {
       throw new RoomError("RULE_DISABLED", "Hand Refresh isn't enabled for this game.");
     }
-    if (this.phase !== "submission") {
+    if (this.gamePhase !== "submission") {
       throw new RoomError("WRONG_PHASE", "You can only refresh your hand during submission.");
     }
     const player = this.players.get(playerId);
@@ -1475,7 +1471,7 @@ export class Room {
   }
 
   private dealPhase(): void {
-    this.phase = "dealing";
+    this.gamePhase = "dealing";
     this.dealtAt = Date.now();
     // A redeal of the same round (Judge kicked or skipped) isn't a new round.
     if (this.roundsPlayed + 1 !== this.lastStartedRound) {
@@ -1549,7 +1545,7 @@ export class Room {
     this.votes.clear();
     this.democracyThisRound = false;
     this.midGameExcused.clear();
-    this.phase = "submission";
+    this.gamePhase = "submission";
 
     this.autoSubmitWildCardIfEnabled();
 
@@ -1559,7 +1555,7 @@ export class Room {
   // ---------- Personal Cards ----------
 
   addPersonalCard(playerId: string, text: string): void {
-    if (this.phase !== "personalCards") throw new RoomError("WRONG_PHASE", "The personal-card window isn't open.");
+    if (this.gamePhase !== "personalCards") throw new RoomError("WRONG_PHASE", "The personal-card window isn't open.");
     const player = this.players.get(playerId);
     if (!player || player.role !== "player" || player.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "Only players write personal cards.");
@@ -1608,7 +1604,7 @@ export class Room {
    * back, or the window could be yo-yoed indefinitely.
    */
   private maybeShortenPersonalCardsWindow(): void {
-    if (this.phase !== "personalCards" || !this.personalCardsDeadline) return;
+    if (this.gamePhase !== "personalCards" || !this.personalCardsDeadline) return;
     const writers = [...this.players.values()].filter(
       (p) => p.role === "player" && !p.isWildCard && p.connected
     );
@@ -1624,7 +1620,7 @@ export class Room {
   }
 
   removePersonalCard(playerId: string, cardId: string): void {
-    if (this.phase !== "personalCards") throw new RoomError("WRONG_PHASE", "The personal-card window isn't open.");
+    if (this.gamePhase !== "personalCards") throw new RoomError("WRONG_PHASE", "The personal-card window isn't open.");
     const player = this.players.get(playerId);
     if (!player) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
     player.personalCards = player.personalCards.filter((c) => c.id !== cardId);
@@ -1637,7 +1633,7 @@ export class Room {
    * deliberate action (and its own "just drawn" moment client-side), same
    * unit as the Double Down replacement always drew. Click again for more. */
   drawCards(playerId: string): void {
-    if (this.phase !== "submission") throw new RoomError("WRONG_PHASE", "You can only draw during submission.");
+    if (this.gamePhase !== "submission") throw new RoomError("WRONG_PHASE", "You can only draw during submission.");
     const player = this.players.get(playerId);
     if (!player || player.role !== "player" || player.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "Only players draw cards.");
@@ -1653,7 +1649,7 @@ export class Room {
 
   tradeInCards(playerId: string, cardIds: string[]): void {
     if (!this.houseRules.tradeIn) throw new RoomError("RULE_DISABLED", "Trade-In isn't enabled for this game.");
-    if (this.phase !== "submission") throw new RoomError("WRONG_PHASE", "You can only trade in during submission.");
+    if (this.gamePhase !== "submission") throw new RoomError("WRONG_PHASE", "You can only trade in during submission.");
     const player = this.players.get(playerId);
     if (!player || player.role !== "player" || player.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "Only players trade in cards.");
@@ -1698,7 +1694,7 @@ export class Room {
    * per-card, deliberately confined to this one method. */
   playActionCard(playerId: string, cardId: string, targetPlayerId?: string, giveCardId?: string): void {
     if (!this.houseRules.actionCards) throw new RoomError("RULE_DISABLED", "Action Cards aren't enabled for this game.");
-    if (this.phase !== "submission") throw new RoomError("WRONG_PHASE", "You can only play an Action Card during submission.");
+    if (this.gamePhase !== "submission") throw new RoomError("WRONG_PHASE", "You can only play an Action Card during submission.");
     const player = this.players.get(playerId);
     if (!player || player.role !== "player" || player.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "Only players play Action Cards.");
@@ -1840,7 +1836,7 @@ export class Room {
   // ---------- Submission ----------
 
   submitCards(playerId: string, cardIds: string[]): void {
-    if (this.phase !== "submission") throw new RoomError("WRONG_PHASE", "Not accepting submissions right now.");
+    if (this.gamePhase !== "submission") throw new RoomError("WRONG_PHASE", "Not accepting submissions right now.");
     const player = this.players.get(playerId);
     if (!player || player.role !== "player") throw new RoomError("NOT_A_PLAYER", "Only players submit cards.");
     if (!this.isVotingRound() && player.id === this.currentJudgeId()) {
@@ -1907,7 +1903,7 @@ export class Room {
    * hand out a free card per cycle.
    */
   unsubmitCards(playerId: string): void {
-    if (this.phase !== "submission") throw new RoomError("WRONG_PHASE", "Too late to take that back.");
+    if (this.gamePhase !== "submission") throw new RoomError("WRONG_PHASE", "Too late to take that back.");
     const player = this.players.get(playerId);
     if (!player || player.role !== "player" || player.isWildCard) {
       throw new RoomError("NOT_A_PLAYER", "Only players submit cards.");
@@ -1971,7 +1967,7 @@ export class Room {
   }
 
   wagerDoubleDown(playerId: string): void {
-    if (this.phase !== "submission") throw new RoomError("WRONG_PHASE", "Too late to wager this round.");
+    if (this.gamePhase !== "submission") throw new RoomError("WRONG_PHASE", "Too late to wager this round.");
     const player = this.players.get(playerId);
     if (!player) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
     const offer = this.pendingDoubleDown.get(playerId);
@@ -2038,7 +2034,7 @@ export class Room {
       this.doubleDownDeadline = Date.now() + windowMs;
       this.phaseTimer = this.safeTimeout("doubleDownWindow", windowMs, () => {
         this.doubleDownDeadline = null;
-        if (this.phase === "submission") {
+        if (this.gamePhase === "submission") {
           this.moveToReveal();
         } else {
           this.broadcast();
@@ -2052,7 +2048,7 @@ export class Room {
   }
 
   private moveToReveal(): void {
-    this.phase = "reveal";
+    this.gamePhase = "reveal";
     this.judgingOrder = shuffle([...this.submissions.keys()]);
     this.revealedIds.clear();
     // Crowd Favorite / Democracy: there's no Judge driving a one-at-a-time
@@ -2066,7 +2062,7 @@ export class Room {
     // the whole point of a voting round.
     if (this.isVotingRound()) {
       for (const id of this.judgingOrder) this.revealedIds.add(id);
-      this.phase = "judging";
+      this.gamePhase = "judging";
     }
     this.broadcast();
   }
@@ -2103,7 +2099,7 @@ export class Room {
   }
 
   shuffleSubmissions(senderId: string): void {
-    if (this.phase !== "reveal") {
+    if (this.gamePhase !== "reveal") {
       throw new RoomError("SHUFFLE_LOCKED", "Shuffling is only available before any card has been revealed.");
     }
     this.requireJudgeAuthority(senderId);
@@ -2112,14 +2108,14 @@ export class Room {
   }
 
   revealSubmission(senderId: string, submissionId: string): void {
-    if (this.phase !== "reveal" && this.phase !== "judging") {
+    if (this.gamePhase !== "reveal" && this.gamePhase !== "judging") {
       throw new RoomError("WRONG_PHASE", "Not judging right now.");
     }
     this.requireJudgeAuthority(senderId);
     if (!this.submissions.has(submissionId)) throw new RoomError("BAD_SUBMISSION", "That submission doesn't exist.");
     if (this.revealedIds.has(submissionId)) return;
     this.revealedIds.add(submissionId);
-    if (this.phase === "reveal") this.phase = "judging";
+    if (this.gamePhase === "reveal") this.gamePhase = "judging";
     // Whichever device (Table or the Judge's own phone) triggers the reveal,
     // the spotlight should open the same way on both - not just locally on
     // whoever tapped it.
@@ -2151,7 +2147,7 @@ export class Room {
     if (this.democracyThisRound) {
       throw new RoomError("RULE_DISABLED", "Democracy was played — this round goes to a vote.");
     }
-    if (this.phase !== "judging") throw new RoomError("WRONG_PHASE", "Not judging right now.");
+    if (this.gamePhase !== "judging") throw new RoomError("WRONG_PHASE", "Not judging right now.");
     this.requireJudgeAuthority(senderId);
     if (!this.revealedIds.has(submissionId)) {
       throw new RoomError("NOT_REVEALED", "Reveal this card before picking it.");
@@ -2182,7 +2178,7 @@ export class Room {
 
   voteForSubmission(playerId: string, submissionId: string): void {
     if (!this.isVotingRound()) throw new RoomError("RULE_DISABLED", "This round isn't decided by a vote.");
-    if (this.phase !== "judging") throw new RoomError("WRONG_PHASE", "Not judging right now.");
+    if (this.gamePhase !== "judging") throw new RoomError("WRONG_PHASE", "Not judging right now.");
     if (!this.revealedIds.has(submissionId)) {
       throw new RoomError("NOT_REVEALED", "Reveal this card before voting for it.");
     }
@@ -2279,7 +2275,7 @@ export class Room {
     this.roundHistory.unshift(this.lastRoundResult);
     this.roundsPlayed += 1;
     if (this.roundHistory.length > 100) this.roundHistory.length = 100;
-    this.phase = "roundEnd";
+    this.gamePhase = "roundEnd";
     this.notify("winner", { name: winner.name, round: this.roundsPlayed });
     this.broadcast();
 
@@ -2304,7 +2300,7 @@ export class Room {
           : winnerCountsTowardEnding && winner.score >= this.winCondition.target;
       if (!this.houseRules.noScorekeeping && reachedEnd) {
         this.finalResult = this.buildFinalResult();
-        this.phase = "gameEnd";
+        this.gamePhase = "gameEnd";
       } else {
         this.notify("round_ended", { round: this.roundsPlayed });
         this.judgeIndex = (this.judgeIndex + 1) % this.judgeOrder.length;
@@ -2358,7 +2354,7 @@ export class Room {
       try {
         fn();
       } catch (err) {
-        log.error("room", "phase timer threw - closing this room", { code: this.code, timer: label, phase: this.phase, err: String(err) });
+        log.error("room", "phase timer threw - closing this room", { code: this.code, timer: label, phase: this.gamePhase, err: String(err) });
         if (err instanceof Error && err.stack) console.error(err.stack);
         this.onFatalError?.(err);
       }
@@ -2392,7 +2388,7 @@ export class Room {
 
     const state: RoomStateForClient = {
       code: this.code,
-      phase: this.phase,
+      phase: this.gamePhase,
       hostId: this.hostId(),
       houseRules: this.houseRules,
       winCondition: this.winCondition,
@@ -2451,12 +2447,12 @@ export class Room {
         state.yourSubmissionId = ownEntry?.[0] ?? null;
         state.yourVote = this.votes.get(viewer.id) ?? null;
       }
-      if (this.phase === "personalCards") {
+      if (this.gamePhase === "personalCards") {
         state.yourPersonalCards = viewer.personalCards;
       }
     }
 
-    if (this.phase === "reveal" || this.phase === "judging") {
+    if (this.gamePhase === "reveal" || this.gamePhase === "judging") {
       // Everyone gets the board now, not just the Judge/Table - unrevealed
       // slots already come through with cards:null regardless of viewer,
       // so this only ever exposes what's already been flipped face-up for
@@ -2473,15 +2469,15 @@ export class Room {
         };
       });
       state.judgingBoard = board;
-      state.shuffleLocked = this.phase === "judging";
+      state.shuffleLocked = this.gamePhase === "judging";
       state.spotlightSubmissionId = this.spotlightId;
     }
 
-    if (this.phase === "roundEnd" && this.lastRoundResult) {
+    if (this.gamePhase === "roundEnd" && this.lastRoundResult) {
       state.lastRound = this.lastRoundResult;
     }
 
-    if (this.phase === "gameEnd" && this.finalResult) {
+    if (this.gamePhase === "gameEnd" && this.finalResult) {
       state.finalResult = this.finalResult;
     }
 
