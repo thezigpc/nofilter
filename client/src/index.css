@@ -550,7 +550,7 @@ body {
   /* Bottom clearance for the fixed .scoreboard and .submit-bar (see those
      rules) - both measure their own live height into these vars, which
      default to 0px on any page that never mounts them. */
-  padding: 1.25rem 1rem calc(2rem + var(--scoreboard-height, 0px) + var(--submit-bar-height, 0px));
+  padding: 1.25rem 1rem calc(2rem + var(--scoreboard-height, 0px) + var(--submit-bar-height, 0px) + var(--venue-announcement-bottom, 0px));
   /* --bg/--paper are defined on .page[data-table-theme], a DESCENDANT of
      body - body's own `color: var(--paper)` (see above) resolves that var
      at body's own scope, which never sees the override, so its computed
@@ -1653,7 +1653,8 @@ button.primary {
      it fell in normal flow. Fixed genuinely glues it to the screen edge on
      both the Table and a phone. */
   position: fixed;
-  bottom: 0;
+  /* Above a venue announcement pinned to the bottom (App.tsx); 0 otherwise. */
+  bottom: var(--venue-announcement-bottom, 0px);
   left: 0;
   right: 0;
   /* .page's own isolation:isolate (see that rule, added for ThemeScene's
@@ -1693,7 +1694,7 @@ button.primary {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: var(--scoreboard-height, 0px);
+  bottom: calc(var(--scoreboard-height, 0px) + var(--venue-announcement-bottom, 0px));
   z-index: 50;
   background: var(--bg);
   border-top: 1px solid color-mix(in srgb, var(--paper) 20%, transparent);
@@ -3438,4 +3439,11 @@ button.primary {
 }
 .page.display-mode .invite-link-row button {
   display: none;
+}
+
+/* "← Box admin" (venue staff's way back to the Bar Games box) sits in the
+   admin page's header row; the kit's own bottom margin is for a link that
+   stands alone above a page. */
+.room-header .bargames-box-admin {
+  margin: 0 !important;
 }

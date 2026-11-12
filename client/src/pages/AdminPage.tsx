@@ -1,3 +1,5 @@
+import { BoxAdminLink } from "@bargames/gamekit/client";
+import { useVenueContext } from "../useVenue.js";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DEFAULT_TABLE_STYLE } from "@tabletop-judge/shared";
@@ -250,10 +252,14 @@ export default function AdminPage() {
   }
 
   const theming = themeAttrs(theme, accentIndex);
+  const venue = useVenueContext();
 
   return (
     <div className="page dashboard" data-table-theme={theming["data-table-theme"]} style={theming.style}>
       <header className="room-header">
+        {/* Venue staff open this page from the box's admin: their way back.
+            Renders nothing standalone. */}
+        <BoxAdminLink ctx={venue} />
         <button type="button" onClick={() => navigate("/")}>
           <BackArrowIcon /> Back
         </button>

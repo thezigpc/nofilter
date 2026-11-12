@@ -5,8 +5,8 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 | | |
 |---|---|
 | Level | **3** (branded, events, commands and status, plus casting from the host screen) |
-| SDK | `@bargames/sdk` 0.10.0, vendored at `vendor/bargames-sdk-0.10.0.tgz` (with `@bargames/gamekit` 0.6.0) |
-| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.3.0`, port 3001 |
+| SDK | `@bargames/sdk` 0.11.0, vendored at `vendor/bargames-sdk-0.11.0.tgz` (with `@bargames/gamekit` 0.7.0) |
+| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.3.1`, port 3001 |
 | Box wiring | [`server/src/bargames.ts`](server/src/bargames.ts) (the only file that talks to the SDK on the server) |
 | Tests | `test/specs/33-bargames-standalone.mjs`, `test/specs/34-bargames-box.mjs` (the second runs a fake box core in-process) |
 
@@ -15,7 +15,7 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 Run against the SDK's mock box (`npx bargames mock-box . --game http://127.0.0.1:3101`, game on port 3101 with `BG_GAME_ID=nofilter BG_CORE_URL=http://127.0.0.1:7199 BG_GAME_TOKEN=dev-token DATA_DIR=<tmp>`):
 
 ```
-nofilter@1.3.0 · level 3 · http://127.0.0.1:3101
+nofilter@1.3.1 · level 3 · http://127.0.0.1:3101
 ✓ health /health → 200
 ✓ /__bargames/venue.json returns the box's branding ("No Filter (mock)")
 ✓ /__bargames/theme.css served
@@ -158,14 +158,20 @@ In Git Bash, set `MSYS_NO_PATHCONV=1` for these commands, or `/nofilter` is rewr
 
 There's no `maxPlayers`: rooms have no player cap. Rooms are listed most recently active first.
 
-## The venue around the game (SDK 0.4.0, 0.5.0)
+## The venue around the game (SDK 0.4.0, 0.5.0, 0.11.0)
 
 Both come from the game kit and render nothing off a box.
 
 - **"← All games"** (`<BackToGames />`): at the very bottom of the landing page ([`HomePage.tsx`](client/src/pages/HomePage.tsx)) and nowhere else, with "Also playing: …" under it.
-- **Staff announcements** (`<VenueAnnouncement />`): one sticky strip at the app root ([`App.tsx`](client/src/App.tsx)), on every phone page. Shared Screens never show it (SDK 0.5.0): the strip hides itself on any page marked as a shared screen. `tableMode()` marks the cast TV. `useIsSharedScreen` ([`useVenue.ts`](client/src/useVenue.ts)) calls `markSharedScreen()` for every other Table (a `role=table` URL, or a Table made with "Set up the Shared Screen", which sits on a plain `/room/{code}`) and for the Template Editor's preview frame.
+- **Staff announcements** (`<VenueAnnouncement />`): one strip at the app root ([`App.tsx`](client/src/App.tsx)), so every page has it, the Shared Screen included.
+  - Staff choose where it shows (SDK 0.11.0): everywhere, phones only or TVs only, at the top or the bottom. The strip hides itself where it doesn't belong.
+  - A page counts as a TV when it is marked as a shared screen. `tableMode()` marks the cast TV. `useIsSharedScreen` ([`useVenue.ts`](client/src/useVenue.ts)) calls `markSharedScreen()` for every other Table (a `role=table` URL, or a Table made with "Set up the Shared Screen", which sits on a plain `/room/{code}`) and for the Template Editor's preview frame.
+  - A strip at the bottom would sit on the scoreboard and the Submit bar, and nobody can dismiss it on a TV. `App.tsx` measures it into `--venue-announcement-bottom`, and both bars (and the page's bottom padding) move up by that much. The value is 0 when the strip is at the top, hidden, dismissed or absent.
+- **"← Box admin"** (`<BoxAdminLink />`, SDK 0.11.0): in the header of [`AdminPage.tsx`](client/src/pages/AdminPage.tsx), so staff who opened the game's settings from the box get back. It needs box 0.12.0, which sends `venue.adminUrl`.
 - The game has no wake-lock code of its own; `tableMode()` keeps the cast TV awake.
-- The venue context is polled every 30 s ([`useVenue.ts`](client/src/useVenue.ts)).
+- Venue changes arrive within seconds on box 0.12.0, which holds `watchVenue()`'s request until something changes. Older boxes and the mock box are polled every 30 s ([`useVenue.ts`](client/src/useVenue.ts)).
+
+Tested on the mock box under `/nofilter` in Chromium. The mock box sends only an announcement's text and no `adminUrl`, so the browser test patched `show`, `position` and `adminUrl` into the venue response. Each of everywhere, phones and TVs showed on the right screens only; with a bottom strip the scoreboard and Submit bar sat directly above it on a phone and on the TV, and dropped back when it was dismissed; the box-admin link showed for staff, opened the patched address, and was absent without one.
 
 ## Table (TV) view: `/room/{code}?role=table&display=1`
 
@@ -262,7 +268,7 @@ Off a box: `enabled: false` and no network call (spec 33).
 
 ## The image
 
-- **Name:** `ghcr.io/thezigpc/nofilter:1.3.0`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet). A new repo's first publish needs a manual run of the workflow.
+- **Name:** `ghcr.io/thezigpc/nofilter:1.3.1`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet). A new repo's first publish needs a manual run of the workflow.
 - **Not published yet:** this repository has **no GitHub remote**. Publishing needs the user to:
   1. create the repo;
   2. push `main` (the workflow runs when `bargames.json` changes);
