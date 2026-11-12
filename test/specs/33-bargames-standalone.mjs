@@ -60,6 +60,15 @@ export default async function ({ baseUrl }) {
     const tr = await fetch(`${baseUrl}/api/admin/trusted`, { method: "POST", headers: forged });
     assertEqual(tr.status, 403, "no passwordless admin session standalone");
 
+    // First-run setup is untouched off a box: open to whoever gets there.
+    const soStatus = await room.host.ack("adminStatus");
+    assertEqual(soStatus.venueLogin, false, "no venue login standalone");
+    assertEqual(soStatus.setupAllowed, soStatus.setupNeeded, "standalone, setup is allowed whenever it's needed");
+
+    // The venue box's password means nothing off a box: with no password
+    // set, no password at all signs in.
+    assertEqual((await room.host.ack("adminLogin", { password: "box-password" })).ok, false, "no box password standalone");
+
     // Casting is box-only: off a box the host gets enabled:false, no network.
     const tvs = await room.host.ack("listTvs");
     assertEqual(tvs.enabled, false, "casting is disabled standalone");

@@ -71,7 +71,9 @@ function SetupWizard({ onDone }: { onDone: () => void }) {
   );
 }
 
-function LoginForm({ onDone }: { onDone: () => void }) {
+/** `venue`: on a Bar Games box, where the box's own admin password signs
+ * you in whether or not the game has a password of its own. */
+function LoginForm({ onDone, venue = false }: { onDone: () => void; venue?: boolean }) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,13 +95,14 @@ function LoginForm({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="panel">
-      <h2>Sign in</h2>
+      <h2>{venue ? "Sign in with the venue's admin password" : "Sign in"}</h2>
+      {venue && <p className="muted">The password for this venue's Bar Games box works here too.</p>}
       <form onSubmit={submit} className="row">
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Admin password"
+          placeholder={venue ? "Venue admin password" : "Admin password"}
           autoComplete="current-password"
           style={{ flex: 1 }}
         />
@@ -196,7 +199,12 @@ function RoomManagementPanel() {
  */
 export default function AdminPage() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState<{ isAdmin: boolean; setupNeeded: boolean } | null>(null);
+  const [status, setStatus] = useState<{
+    isAdmin: boolean;
+    setupNeeded: boolean;
+    venueLogin: boolean;
+    setupAllowed: boolean;
+  } | null>(null);
   const [theme, setTheme] = useState(DEFAULT_TABLE_STYLE.theme);
   const [accentIndex, setAccentIndex] = useState(DEFAULT_TABLE_STYLE.accentIndex);
 
@@ -211,7 +219,14 @@ export default function AdminPage() {
     // Stored token first, then the venue box vouching for staff (never
     // standalone) - see resumeAdminSession.
     void resumeAdminSession().then(() =>
-      socket.emit("adminStatus", (res) => setStatus({ isAdmin: res.isAdmin, setupNeeded: res.setupNeeded }))
+      socket.emit("adminStatus", (res) =>
+        setStatus({
+          isAdmin: res.isAdmin,
+          setupNeeded: res.setupNeeded,
+          venueLogin: res.venueLogin,
+          setupAllowed: res.setupAllowed,
+        })
+      )
     );
   }
 
@@ -248,11 +263,15 @@ export default function AdminPage() {
       {!status ? (
         <p className="muted">Loading…</p>
       ) : status.setupNeeded && !status.isAdmin ? (
-        // Venue staff signed in through the box skip this: they're admin
-        // already, with or without a game password.
-        <SetupWizard onDone={refreshStatus} />
+        // On a venue box the box's password is the way in: lead with that,
+        // and offer the wizard only to staff the box vouches for. (Staff
+        // signed in through the box never get here: they're admin already.)
+        <>
+          {status.venueLogin && <LoginForm venue onDone={refreshStatus} />}
+          {status.setupAllowed && <SetupWizard onDone={refreshStatus} />}
+        </>
       ) : !status.isAdmin ? (
-        <LoginForm onDone={refreshStatus} />
+        <LoginForm venue={status.venueLogin} onDone={refreshStatus} />
       ) : (
         <>
           <div className="panel admin-bar signed-in">

@@ -913,7 +913,19 @@ export interface ClientToServerEvents {
   adminLogin: (req: { password: string }, cb: (res: { ok: boolean; token?: string; error?: string }) => void) => void;
   adminResume: (req: { token: string }, cb: (res: { ok: boolean }) => void) => void;
   adminLogout: (req: { token: string }) => void;
-  adminStatus: (cb: (res: { configured: boolean; isAdmin: boolean; setupNeeded: boolean }) => void) => void;
+  /** venueLogin: on a Bar Games box, the box's admin password signs in here
+   * (offer a login even when nothing is configured). setupAllowed: this
+   * client may run the first-run wizard - always when setupNeeded off a
+   * box; on a box only for staff the box vouches for. */
+  adminStatus: (
+    cb: (res: {
+      configured: boolean;
+      isAdmin: boolean;
+      setupNeeded: boolean;
+      venueLogin: boolean;
+      setupAllowed: boolean;
+    }) => void
+  ) => void;
   /** First-run only - see server/src/admin/auth.ts's completeSetup(). Logs
    * the completer in immediately on success, same as adminLogin. */
   adminCompleteSetup: (

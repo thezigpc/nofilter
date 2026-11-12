@@ -7,7 +7,7 @@ import { Server } from "socket.io";
 import type { ClientToServerEvents, ServerToClientEvents } from "@tabletop-judge/shared";
 import { BUNDLED_SAMPLE_CARD_DATA_PATH, CLIENT_DIST_PATH, CLIENT_ORIGIN, MOCKUPS_DIR_PATH, PORT } from "./config.js";
 import { deleteCoreSetPack, getCoreSetInfo, loadInitialCardData, uploadCoreSet } from "./cards/coreSet.js";
-import { isValidToken, setupNeeded, trustedSession } from "./admin/auth.js";
+import { isValidToken, setupNeeded, trustedSession, venueLogin } from "./admin/auth.js";
 import { initCustomCards } from "./customCards/store.js";
 import { initCustomSets } from "./customSets/store.js";
 import { getGameName, initGameName } from "./gameName/store.js";
@@ -80,7 +80,9 @@ app.get("/api/config", async (_req, res) => {
     // What the Judge and the Wild Card bot are called by default (see
     // server/src/roleNames/store.ts). The admin page reads it to prefill.
     defaultRoleNames: getDefaultRoleNames(),
-    setupNeeded: await setupNeeded(),
+    // Never on a Bar Games box: the box's password is the admin password
+    // there, so there is no window for anyone to claim.
+    setupNeeded: (await setupNeeded()) && !venueLogin(),
     // What HomePage, Card Management and /admin render with - those pages
     // have no room of their own to inherit a look from, so they use
     // whatever an admin picked as the deployment's default (see

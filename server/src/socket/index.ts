@@ -4,13 +4,13 @@ import { BACKGROUND_STYLES, TABLE_THEME_LABELS } from "@tabletop-judge/shared";
 import { RoomManager } from "../rooms/RoomManager.js";
 import { toErrorPayload } from "../rooms/errors.js";
 import { log } from "../util/logger.js";
-import { adminConfigured, completeSetup, isValidToken, login, logout, setupNeeded } from "../admin/auth.js";
+import { adminConfigured, completeSetup, isValidToken, login, logout, setupNeeded, venueLogin } from "../admin/auth.js";
 import type { Room } from "../rooms/Room.js";
 import { customSetToPackSummary } from "../rooms/Room.js";
 import { getCoreSetInfo, uploadCoreSet } from "../cards/coreSet.js";
 import { setGameName } from "../gameName/store.js";
 import { setDefaultRoleNames } from "../roleNames/store.js";
-import { casting, clientIp } from "../bargames.js";
+import { bg, casting, clientIp } from "../bargames.js";
 import { setDefaultTheme } from "../tableStyle/store.js";
 import { deletePreset, listPresets, savePreset } from "../presets/store.js";
 import { addBlackCard, addWhiteCard, deleteCard, listCustomCards, mergeUploadedCards } from "../customCards/store.js";
@@ -134,13 +134,29 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
       isAdmin = false;
     });
 
-    socket.on("adminStatus", async (cb) =>
-      cb({ configured: await adminConfigured(), isAdmin, setupNeeded: await setupNeeded() })
-    );
+    // On a Bar Games box the box's password is the admin password, so the
+    // first-run wizard is only for staff: someone the box's gateway vouches
+    // for, or a socket already signed in (box password or staff sign-in).
+    const maySetUp = () => !venueLogin() || isAdmin || bg.isStaff(socket.request);
+
+    socket.on("adminStatus", async (cb) => {
+      const needed = await setupNeeded();
+      cb({
+        configured: await adminConfigured(),
+        isAdmin,
+        setupNeeded: needed,
+        venueLogin: venueLogin(),
+        setupAllowed: needed && maySetUp(),
+      });
+    });
 
     // First-run only - see auth.ts's completeSetup() for why this refuses
     // once something is already configured (env var or a prior wizard run).
     socket.on("adminCompleteSetup", async ({ password, confirm }, cb) => {
+      if (!maySetUp()) {
+        log.warn("admin", "blocked first-run setup from a non-staff client on a box");
+        return cb({ ok: false, error: "Sign in with the venue's admin password. Staff can set a separate one for this game." });
+      }
       if (typeof password !== "string" || password.length < 8) {
         return cb({ ok: false, error: "Password must be at least 8 characters." });
       }

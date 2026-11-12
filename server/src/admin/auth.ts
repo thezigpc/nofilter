@@ -1,4 +1,5 @@
 import { createAdminAuth } from "@bargames/gamekit/server";
+import { bg } from "../bargames.js";
 import { ADMIN_PASSWORD, ADMIN_PASSWORD_HASH_PATH } from "../config.js";
 import { log } from "../util/logger.js";
 import { store } from "../util/store.js";
@@ -32,6 +33,13 @@ const auth = createAdminAuth({
   envPassword: ADMIN_PASSWORD,
   saltFormat: "string",
   failsAllowed: Number.POSITIVE_INFINITY,
+  // On a Bar Games box the box's own admin password opens this admin too,
+  // even before the game has a password. The kit only asks the box when
+  // this game's password didn't match; the box limits guesses itself. Off
+  // a box the SDK answers false without any network call.
+  venuePassword: (password, ip) => bg.checkVenuePassword(password, ip),
+  // ...and takes over: see venueLogin() below.
+  onBox: bg.connected,
   log,
 });
 
@@ -51,6 +59,15 @@ export async function adminConfigured(): Promise<boolean> {
 export async function setupNeeded(): Promise<boolean> {
   await init();
   return auth.setupNeeded();
+}
+
+/** True on a Bar Games box: the box's admin password is the way in, so
+ * pages offer a login (never "nobody has set a password yet"), and the
+ * first-run wizard is for staff the box vouches for only - a guest on the
+ * venue's Wi-Fi can't claim the game by setting a password first. Always
+ * false off a box. */
+export function venueLogin(): boolean {
+  return auth.venueLogin();
 }
 
 /** The password file exists but can't be used (unreadable or wrong shape). */

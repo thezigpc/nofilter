@@ -32,7 +32,9 @@ export default function AdminBar({ onChange }: { onChange: (isAdmin: boolean) =>
     function refresh() {
       // Stored token first, then the venue box vouching for staff.
       void resumeAdminSession().then((ok) => apply(ok));
-      socket.emit("adminStatus", (res) => setConfigured(res.configured));
+      // On a venue box the box's password signs in, so the library is never
+      // "locked until someone sets a password".
+      socket.emit("adminStatus", (res) => setConfigured(res.configured || res.venueLogin));
     }
 
     socket.on("connect", refresh);

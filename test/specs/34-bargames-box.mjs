@@ -4,12 +4,14 @@ import { startServer, makeClient, makeRoom, selectOfficialPacks, waitFor, wait, 
 export const name = "Bar Games: on a box - events, commands, status, venue rooms, every close path";
 
 const TOKEN = "spec-token";
+const BOX_PASSWORD = "the-box-password";
 
 /** A stand-in for the box's core: serves a venue context and records the
  * events the game posts. That's the whole core<->game protocol the SDK uses
  * (GET /internal/venue, POST /internal/events, both Bearer-authenticated). */
 async function fakeCore() {
   const events = [];
+  const passwordChecks = [];
   const server = http.createServer((req, res) => {
     if (req.headers.authorization !== `Bearer ${TOKEN}`) {
       res.writeHead(401).end();
@@ -28,6 +30,15 @@ async function fakeCore() {
       );
       return;
     }
+    if (req.method === "POST" && req.url === "/internal/venue-password") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        passwordChecks.push(JSON.parse(body).password);
+        res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ok: JSON.parse(body).password === BOX_PASSWORD }));
+      });
+      return;
+    }
     if (req.method === "POST" && req.url === "/internal/events") {
       let body = "";
       req.on("data", (c) => (body += c));
@@ -40,7 +51,7 @@ async function fakeCore() {
     res.writeHead(404).end();
   });
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
-  return { url: `http://127.0.0.1:${server.address().port}`, events, close: () => server.close() };
+  return { url: `http://127.0.0.1:${server.address().port}`, events, passwordChecks, close: () => server.close() };
 }
 
 export default async function () {
@@ -187,6 +198,28 @@ export default async function () {
     await waitFor(() => adminSock.socket.connected, { label: "staff socket" });
     assertEqual((await adminSock.ack("adminResume", { token: signedIn.token })).ok, true, "the session works like a password login");
     assertEqual((await adminSock.ack("adminStatus")).isAdmin, true, "and makes the socket admin");
+
+    // --- The box's admin password opens the game's admin (SDK 0.8.0), here
+    // before the game has any password of its own.
+    const boxAdmin = makeClient(base, "BoxAdmin");
+    clients.push(boxAdmin);
+    await waitFor(() => boxAdmin.socket.connected, { label: "box admin socket" });
+    const guestStatus = await boxAdmin.ack("adminStatus");
+    assertEqual(guestStatus.setupNeeded, true, "the game has no password of its own");
+    assertEqual(guestStatus.venueLogin, true, "on a box the box's password is offered");
+    assertEqual(guestStatus.setupAllowed, false, "a guest isn't offered first-run setup on a box");
+    const grab = await boxAdmin.ack("adminCompleteSetup", { password: "guest-claims-it", confirm: "guest-claims-it" });
+    assertEqual(grab.ok, false, "a guest can't claim the game by setting a password");
+    assertEqual((await boxAdmin.ack("adminStatus")).setupNeeded, true, "and nothing was set");
+    assertEqual(cfg.setupNeeded, false, "no 'unclaimed server' warning on a box");
+    assertEqual((await boxAdmin.ack("adminLogin", { password: "not-the-box-password" })).ok, false, "a wrong password is refused");
+    assertEqual((await boxAdmin.ack("adminStatus")).isAdmin, false, "and doesn't sign in");
+    const boxLogin = await boxAdmin.ack("adminLogin", { password: BOX_PASSWORD });
+    assert(boxLogin.ok && typeof boxLogin.token === "string", "the box's password signs in");
+    const staffStatus = await boxAdmin.ack("adminStatus");
+    assertEqual(staffStatus.isAdmin, true, "as admin");
+    assertEqual(staffStatus.setupAllowed, true, "someone signed in may set a separate game password");
+    assert(core.passwordChecks.includes(BOX_PASSWORD), "the box was asked");
 
     // --- "Show on this TV": create_room with firstJoinerHosts. The room
     // starts on a TV with no host; the first player to join is the host,

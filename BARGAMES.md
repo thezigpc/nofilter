@@ -5,8 +5,8 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 | | |
 |---|---|
 | Level | **3** (branded, events, commands and status, plus casting from the host screen) |
-| SDK | `@bargames/sdk` 0.7.1, vendored at `vendor/bargames-sdk-0.7.1.tgz` (with `@bargames/gamekit` 0.4.0) |
-| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.2.0`, port 3001 |
+| SDK | `@bargames/sdk` 0.8.0, vendored at `vendor/bargames-sdk-0.8.0.tgz` (with `@bargames/gamekit` 0.5.1) |
+| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.2.1`, port 3001 |
 | Box wiring | [`server/src/bargames.ts`](server/src/bargames.ts) (the only file that talks to the SDK on the server) |
 | Tests | `test/specs/33-bargames-standalone.mjs`, `test/specs/34-bargames-box.mjs` (the second runs a fake box core in-process) |
 
@@ -15,7 +15,7 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 Run against the SDK's mock box (`npx bargames mock-box . --game http://127.0.0.1:3101`, game on port 3101 with `BG_GAME_ID=nofilter BG_CORE_URL=http://127.0.0.1:7199 BG_GAME_TOKEN=dev-token DATA_DIR=<tmp>`):
 
 ```
-nofilter@1.2.0 · level 3 · http://127.0.0.1:3101
+nofilter@1.2.1 · level 3 · http://127.0.0.1:3101
 ✓ health /health → 200
 ✓ /__bargames/venue.json returns the box's branding ("No Filter (mock)")
 ✓ /__bargames/theme.css served
@@ -109,6 +109,19 @@ Staff signed in to the box's admin open No Filter's admin page (`routes.admin`: 
 - **Off a box** `isStaff` is always false, even with forged gateway headers (spec 33), so the password stays the only way in.
 
 Tested on the mock box: `/__bargames/staff?next=/admin` lands on the signed-in admin page with no form; `?off=1` brings the form back.
+
+## The box's admin password (SDK 0.8.0)
+
+Typed into No Filter's admin login, the venue box's admin password signs in, even before the game has a password of its own.
+
+- **Server** ([`auth.ts`](server/src/admin/auth.ts)): `createAdminAuth({ venuePassword: (pw, ip) => bg.checkVenuePassword(pw, ip) })`. The kit asks the box only when the game's own password didn't match (or none is set). The box limits wrong guesses itself.
+- **The box password takes over** (kit 0.5.1, `onBox: bg.connected`). On a box:
+  - `/admin` leads with "Sign in with the venue's admin password", and Card Management shows its sign-in form, even when the game has no password;
+  - the first-run wizard is for staff only. `adminStatus` carries `venueLogin` and `setupAllowed`, and `adminCompleteSetup` refuses a client that is neither signed in nor vouched for by the box (`bg.isStaff`), so a guest on the venue's Wi-Fi can't claim the game by setting a password first;
+  - the home page's "no admin password yet" warning is off (`/api/config` `setupNeeded` is false).
+- **Off a box** `checkVenuePassword` is always false and makes no network call (spec 33).
+
+Tested on the mock box (`box-password`): a guest saw the sign-in form and no wizard, a wrong password was refused, and the box password signed in on a game with no password set. Spec 34 covers the same against a fake core, including the refused setup; spec 33 checks that standalone setup is unchanged.
 
 ## Status
 
@@ -231,7 +244,7 @@ Off a box: `enabled: false` and no network call (spec 33).
 
 ## The image
 
-- **Name:** `ghcr.io/thezigpc/nofilter:1.2.0`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet). A new repo's first publish needs a manual run of the workflow.
+- **Name:** `ghcr.io/thezigpc/nofilter:1.2.1`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet). A new repo's first publish needs a manual run of the workflow.
 - **Not published yet:** this repository has **no GitHub remote**. Publishing needs the user to:
   1. create the repo;
   2. push `main` (the workflow runs when `bargames.json` changes);
