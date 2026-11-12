@@ -628,6 +628,9 @@ export interface RoomStateForClient {
     role: Role;
     isJudge: boolean;
     isHost: boolean;
+    /** May put this room on the venue's TVs (Bar Games boxes only; the
+     * client still hides the control off a box). */
+    canCast: boolean;
   };
 }
 

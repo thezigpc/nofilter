@@ -36,6 +36,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-11-11",
     items: [
       {
+        kind: "fixed",
+        text: "At a venue with TVs, a room started with \"Set up the Shared Screen\" can now be put on a TV from that screen. Before, only a phone host got the TVs button.",
+      },
+      {
         kind: "new",
         text: "Call the roles whatever you like: the host can rename the Judge and the Wild Card bot for their room under House Rules → Names, and every screen, button and message follows along.",
       },

@@ -242,7 +242,7 @@ export default function TablePreviewStage({
     // preview-only fabrication that leaked "Skip my turn" (gated on
     // isHost || isJudge) into the preview even though it can never actually
     // show on a real Shared Screen.
-    you: { id: "preview", role: "table", isJudge: false, isHost: false },
+    you: { id: "preview", role: "table", isJudge: false, isHost: false, canCast: false },
   };
 
   const accent = TABLE_THEME_ACCENTS[tableStyle.theme][tableStyle.accentIndex]?.color;

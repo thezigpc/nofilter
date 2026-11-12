@@ -95,6 +95,8 @@ export default async function () {
     assert((await tv.ack("joinRoom", { roomCode: code, name: "Shared Screen", role: "table" })).ok, "TV joins");
     await waitFor(() => tv.state, { label: "tv state" });
     assertEqual(tv.state.you.isHost, false, "a TV is not a controller");
+    assertEqual(tv.state.you.canCast, false, "a plain Table can't cast a venue room");
+    assertEqual((await tv.ack("castToTvs", { ids: ["x"] })).ok, false, "and the server refuses it");
     let before = tv.errors.length;
     tv.emit("updateHouseRules", { houseRules: { tradeIn: true } });
     await waitFor(() => tv.errors.length > before, { label: "TV settings refused" });
@@ -107,6 +109,7 @@ export default async function () {
     assert((await ipad.ack("joinRoom", { roomCode: code, name: "Shared Screen", role: "table", venueKey: key })).ok, "controller joins");
     await waitFor(() => ipad.state, { label: "ipad state" });
     assertEqual(ipad.state.you.isHost, true, "the keyed Table is the room's controller");
+    assertEqual(ipad.state.you.canCast, true, "the controller can cast");
     ipad.emit("updateHouseRules", { houseRules: { tradeIn: true } });
     await waitFor(() => ipad.state.houseRules.tradeIn === true, { label: "controller changes settings" });
 
@@ -168,6 +171,33 @@ export default async function () {
     assert(!(await status()).some((r) => r.code === code), "an ended room leaves status at once");
     await waitFor(() => eventsFor(code, "room_closed").length === 1, { label: "room_closed after end" });
     assertEqual(eventsFor(code, "room_closed")[0].data.reason, "admin", "end's close reason");
+
+    // --- Casting from a room people started themselves. "Set up the Shared
+    // Screen" makes a room whose Table never becomes host; it must still be
+    // able to put the room on a TV, as must the phone host. Players can't.
+    const screen = makeClient(base, "Screen");
+    clients.push(screen);
+    await waitFor(() => screen.socket.connected, { label: "screen connect" });
+    const made = await screen.ack("createRoom", { name: "Shared Screen", role: "table" });
+    assert(made.ok, "a Shared Screen creates a room");
+    await waitFor(() => screen.state, { label: "screen state" });
+    assertEqual(screen.state.you.isHost, false, "the Shared Screen is not the host");
+    assertEqual(screen.state.you.canCast, true, "but it can cast its own room");
+    const guests = [];
+    for (const n of ["Gus", "Hal"]) {
+      const c = makeClient(base, n);
+      clients.push(c);
+      guests.push(c);
+      await waitFor(() => c.socket.connected, { label: `${n} connect` });
+      assert((await c.ack("joinRoom", { roomCode: made.roomCode, name: n, role: "player" })).ok, `${n} joins`);
+      await waitFor(() => c.state, { label: `${n} state` });
+    }
+    assertEqual(guests[0].state.you.canCast, true, "the phone host can cast");
+    assertEqual(guests[1].state.you.canCast, false, "an ordinary player can't");
+    const refused = await guests[1].ack("castToTvs", { ids: ["x"] });
+    assert(!refused.ok && /host or the Shared Screen/.test(refused.message), "the server refuses a player's cast");
+    const allowed = await screen.ack("castToTvs", { ids: ["x"] });
+    assert(!/host or the Shared Screen/.test(allowed.message ?? ""), "the Shared Screen's cast reaches the box");
 
     // --- Host close of a phone room: room_created (patron) and room_closed (host).
     const phone = await makeRoom(base, ["Hank", "Ivy"]);

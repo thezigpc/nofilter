@@ -10,6 +10,7 @@ import {
 } from "@tabletop-judge/shared";
 import TablePreviewStage from "../components/TablePreviewStage.js";
 import { EDITOR_PREVIEW_CHANNEL, type EditorPreviewConfig } from "../editorPreviewChannel.js";
+import { useIsSharedScreen } from "../useVenue.js";
 
 function readInitialConfig(search: URLSearchParams): EditorPreviewConfig {
   const maxCardSizeParam = search.get("maxCardSize");
@@ -43,6 +44,7 @@ function readInitialConfig(search: URLSearchParams): EditorPreviewConfig {
 export default function TemplateEditorPreviewPage() {
   const [search] = useSearchParams();
   const [config, setConfig] = useState<EditorPreviewConfig>(() => readInitialConfig(search));
+  useIsSharedScreen(true);
 
   useEffect(() => {
     const channel = new BroadcastChannel(EDITOR_PREVIEW_CHANNEL);

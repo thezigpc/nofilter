@@ -699,6 +699,24 @@ export class Room implements KitRoom {
     return player;
   }
 
+  /** Who may put this room on the venue's TVs: the same people who may
+   * change its settings. A room started with "Set up the Shared Screen" has
+   * no host until a player joins, and its Table never becomes one, so
+   * host-only would leave whoever is running it from an iPad unable to cast.
+   * In a venue room a plain Table is a cast TV or a patron, so only the
+   * keyed controller counts. */
+  private mayCast(player: ServerPlayer): boolean {
+    if (hasHostAuthority(player)) return true;
+    return player.role === "table" && this.kind !== "venue";
+  }
+
+  requireCastAuthority(playerId: string): ServerPlayer {
+    const player = this.players.get(playerId);
+    if (!player) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
+    if (!this.mayCast(player)) throw new RoomError("NOT_HOST", "Only the host or the Shared Screen can do that.");
+    return player;
+  }
+
   updatePackSelection(playerId: string, packIds: string[]): void {
     this.requireLobbyAuthority(playerId);
     this.requireLobby();
@@ -2423,6 +2441,7 @@ export class Room implements KitRoom {
         role: viewer.role,
         isJudge: viewer.id === judgeId,
         isHost: hasHostAuthority(viewer),
+        canCast: this.mayCast(viewer),
       },
     };
 

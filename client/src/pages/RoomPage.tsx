@@ -276,7 +276,7 @@ export default function RoomPage() {
 
   const isTable = state?.you.role === "table";
   // Keeps the venue's announcement strip off a Shared Screen (App.tsx).
-  useIsSharedScreen(isTable);
+  useIsSharedScreen(isTable || roleParam === "table");
   const pageRef = useRef<HTMLDivElement>(null);
   const [autoFitZoom, setAutoFitZoom] = useState<number | null>(null);
   const [tableMaxWidth, setTableMaxWidth] = useState<number | null>(null);
@@ -595,7 +595,8 @@ export default function RoomPage() {
               <DoorExitIcon /> Leave
             </button>
           )}
-          <CastTvsControl isHost={state.you.isHost} />
+          {/* Never on the cast TV itself: nobody can tap it. */}
+          {!(displayMode && !state.you.isHost) && <CastTvsControl canCast={state.you.canCast} />}
           {state.you.isHost && (
             <button type="button" onClick={closeRoomAsHost}>
               <CloseCircleIcon /> Close Room

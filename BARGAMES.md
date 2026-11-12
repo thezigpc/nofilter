@@ -5,8 +5,8 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 | | |
 |---|---|
 | Level | **3** (branded, events, commands and status, plus casting from the host screen) |
-| SDK | `@bargames/sdk` 0.4.0, vendored at `vendor/bargames-sdk-0.4.0.tgz` (with `@bargames/gamekit` 0.3.1) |
-| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.1.0`, port 3001 |
+| SDK | `@bargames/sdk` 0.5.0, vendored at `vendor/bargames-sdk-0.5.0.tgz` (with `@bargames/gamekit` 0.3.2) |
+| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.1.1`, port 3001 |
 | Box wiring | [`server/src/bargames.ts`](server/src/bargames.ts) (the only file that talks to the SDK on the server) |
 | Tests | `test/specs/33-bargames-standalone.mjs`, `test/specs/34-bargames-box.mjs` (the second runs a fake box core in-process) |
 
@@ -15,7 +15,7 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 Run against the SDK's mock box (`npx bargames mock-box . --game http://127.0.0.1:3101`, game on port 3101 with `BG_GAME_ID=nofilter BG_CORE_URL=http://127.0.0.1:7199 BG_GAME_TOKEN=dev-token DATA_DIR=<tmp>`):
 
 ```
-nofilter@1.1.0 · level 3 · http://127.0.0.1:3101
+nofilter@1.1.1 · level 3 · http://127.0.0.1:3101
 ✓ health /health → 200
 ✓ /__bargames/venue.json returns the box's branding ("No Filter (mock)")
 ✓ /__bargames/theme.css served
@@ -107,12 +107,13 @@ Standalone none of this exists: `venueKey` is null on every normal room, so a ke
 
 There's no `maxPlayers`: rooms have no player cap. Rooms are listed most recently active first.
 
-## The venue around the game (SDK 0.4.0)
+## The venue around the game (SDK 0.4.0, 0.5.0)
 
 Both come from the game kit and render nothing off a box.
 
 - **"← All games"** (`<BackToGames />`): at the very bottom of the landing page ([`HomePage.tsx`](client/src/pages/HomePage.tsx)) and nowhere else, with "Also playing: …" under it.
-- **Staff announcements** (`<VenueAnnouncement />`): one sticky strip at the app root ([`App.tsx`](client/src/App.tsx)), on every phone page. Shared Screens never show it: a `role=table` URL and the Template Editor's preview frame are skipped by URL, and a joined Table reports itself through `useIsSharedScreen` (a Table made with "Set up the Shared Screen" sits on a plain `/room/{code}`).
+- **Staff announcements** (`<VenueAnnouncement />`): one sticky strip at the app root ([`App.tsx`](client/src/App.tsx)), on every phone page. Shared Screens never show it (SDK 0.5.0): the strip hides itself on any page marked as a shared screen. `tableMode()` marks the cast TV. `useIsSharedScreen` ([`useVenue.ts`](client/src/useVenue.ts)) calls `markSharedScreen()` for every other Table (a `role=table` URL, or a Table made with "Set up the Shared Screen", which sits on a plain `/room/{code}`) and for the Template Editor's preview frame.
+- The game has no wake-lock code of its own; `tableMode()` keeps the cast TV awake.
 - The venue context is polled every 30 s ([`useVenue.ts`](client/src/useVenue.ts)).
 
 ## Table (TV) view: `/room/{code}?role=table&display=1`
@@ -139,7 +140,13 @@ Both come from the game kit and render nothing off a box.
 
 ## Casting from the host screen (step 6b)
 
-A **TVs** button appears in the room header for the host (or the venue controller) only when the box says casting is enabled.
+A **TVs** button appears in the room header only when the box says casting is enabled, for whoever is running the room (`state.you.canCast`):
+
+- the host (the first player to join a room made on a phone);
+- the Shared Screen of a room people started themselves. A room made with "Set up the Shared Screen" has no host until a player joins, and its Table never becomes one, so until 1.1.1 that screen had no way to cast;
+- in a venue room, only the keyed venue controller. A plain Table there is a cast TV or a patron.
+
+The cast TV itself (`display=1`) never shows the button.
 
 | Socket intent | SDK call |
 |---|---|
@@ -147,10 +154,10 @@ A **TVs** button appears in the room header for the host (or the venue controlle
 | `castToTvs { ids, pin }` | `bg.cast()` |
 | `stopTvs { ids, pin }` | `bg.stopCast()` |
 
-All three check `requireHost` on the server. A non-host gets `enabled: false` or a refusal.
+All three check `Room.requireCastAuthority` on the server. Anyone else gets `enabled: false` or a refusal (spec 34).
 
 Tested against the mock box:
-- the host saw the three fake TVs;
+- the host saw the three fake TVs, and so did a Shared Screen that created its own room;
 - a non-host was refused;
 - `fake-bar` cast (the mock printed the table URL);
 - `fake-unpaired` returned `needsCode`, which the UI explains as "ask staff to pair it";
@@ -204,7 +211,7 @@ Off a box: `enabled: false` and no network call (spec 33).
 
 ## The image
 
-- **Name:** `ghcr.io/thezigpc/nofilter:1.1.0`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet). A new repo's first publish needs a manual run of the workflow.
+- **Name:** `ghcr.io/thezigpc/nofilter:1.1.1`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet). A new repo's first publish needs a manual run of the workflow.
 - **Not published yet:** this repository has **no GitHub remote**. Publishing needs the user to:
   1. create the repo;
   2. push `main` (the workflow runs when `bargames.json` changes);

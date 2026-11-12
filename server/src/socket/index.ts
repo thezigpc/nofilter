@@ -316,15 +316,15 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
     socket.on("playAgain", withRoom((room, pid) => room.playAgain(pid)));
 
     // Bar Games casting (box only - off a box displays() says enabled:false
-    // and the client never shows the control). Host-only: casting is the
-    // room's call, never a player's. Each ack carries the SDK's own result
+    // and the client never shows the control). For the host or the room's
+    // Shared Screen (see Room.requireCastAuthority), never a plain player. Each ack carries the SDK's own result
     // so the host sees messages like "Wrong TV PIN" as-is.
-    const hostRoom = (): Room | null => {
+    const castRoom = (): Room | null => {
       if (!roomCode || !playerId) return null;
       const room = roomManager.getRoom(roomCode);
       if (!room) return null;
       try {
-        room.requireHost(playerId);
+        room.requireCastAuthority(playerId);
         return room;
       } catch {
         return null;
@@ -332,20 +332,20 @@ export function registerSocketHandlers(io: IO, roomManager: RoomManager): void {
     };
     socket.on("listTvs", async (cb) => {
       if (typeof cb !== "function") return;
-      if (!hostRoom()) return cb({ enabled: false, pinRequired: false, displays: [] });
+      if (!castRoom()) return cb({ enabled: false, pinRequired: false, displays: [] });
       cb(await casting.displays());
     });
     socket.on("castToTvs", async (req, cb) => {
       if (typeof cb !== "function") return;
-      const room = hostRoom();
-      if (!room) return cb({ ok: false, message: "Only the host can put this room on the TVs." });
+      const room = castRoom();
+      if (!room) return cb({ ok: false, message: "Only the host or the Shared Screen can put this room on the TVs." });
       const ids = Array.isArray(req?.ids) ? req.ids.filter((id): id is string => typeof id === "string") : [];
       const pin = typeof req?.pin === "string" ? req.pin : undefined;
       cb(await casting.cast(room.code, ids, pin));
     });
     socket.on("stopTvs", async (req, cb) => {
       if (typeof cb !== "function") return;
-      if (!hostRoom()) return cb({ ok: false, message: "Only the host can change the TVs." });
+      if (!castRoom()) return cb({ ok: false, message: "Only the host or the Shared Screen can change the TVs." });
       const ids = Array.isArray(req?.ids) ? req.ids.filter((id): id is string => typeof id === "string") : [];
       const pin = typeof req?.pin === "string" ? req.pin : undefined;
       cb(await casting.stop(ids, pin));

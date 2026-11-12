@@ -5,12 +5,13 @@ import { useOnBox } from "../useVenue.js";
 
 /**
  * Bar Games casting: the host puts this room's Shared Screen on the venue's
- * TVs. Renders nothing standalone, nothing for non-hosts, and nothing when
+ * TVs. Renders nothing standalone, nothing for anyone the server says can't
+ * cast (state.you.canCast), and nothing when
  * the venue hasn't allowed casting from games (targets.enabled false). TV
  * pairing and the PIN itself are set up by staff in the box admin, never
  * here. The list is fetched when opened, never polled.
  */
-export default function CastTvsControl({ isHost }: { isHost: boolean }) {
+export default function CastTvsControl({ canCast }: { canCast: boolean }) {
   const onBox = useOnBox();
   const [open, setOpen] = useState(false);
   const [targets, setTargets] = useState<CastTargetsLike | null>(null);
@@ -18,7 +19,7 @@ export default function CastTvsControl({ isHost }: { isHost: boolean }) {
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (!onBox || !isHost) return null;
+  if (!onBox || !canCast) return null;
 
   function refresh() {
     socket.emit("listTvs", (t) => setTargets(t));

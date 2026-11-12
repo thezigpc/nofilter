@@ -4,7 +4,7 @@
 // standalone game and applyTheme() ignores standalone contexts, so every
 // --venue-* CSS variable stays unset and index.css's fallbacks apply.
 
-import { applyTheme, getVenue, isOnBox, tableMode, watchVenue, type VenueContext } from "@bargames/sdk/client";
+import { applyTheme, getVenue, isOnBox, markSharedScreen, tableMode, watchVenue, type VenueContext } from "@bargames/sdk/client";
 import { useEffect, useRef, useState } from "react";
 import { serverUrl } from "./socket.js";
 
@@ -45,38 +45,15 @@ export function useVenueContext(): VenueContext | null {
   return ctx;
 }
 
-// Shared screens never show the staff announcement strip (the box puts
-// announcements on its TVs itself). A Table's URL doesn't always say it is
-// one - "Set up the Table" lands on a plain /room/CODE - so the room page
-// reports it here once it knows its role.
-let sharedScreens = 0;
-const sharedScreenListeners = new Set<() => void>();
-
-/** Call from a page that is (or may become) a shared screen. */
+/**
+ * Marks the page as a shared screen while `isShared` is true, so the staff
+ * announcement strip hides itself (the box puts announcements on its TVs
+ * itself). tableMode() does this for a cast TV; this covers every other
+ * Table - "Set up the Shared Screen" lands on a plain /room/CODE - and the
+ * Template Editor's preview frame.
+ */
 export function useIsSharedScreen(isShared: boolean): void {
-  useEffect(() => {
-    if (!isShared) return;
-    sharedScreens++;
-    for (const fn of sharedScreenListeners) fn();
-    return () => {
-      sharedScreens--;
-      for (const fn of sharedScreenListeners) fn();
-    };
-  }, [isShared]);
-}
-
-/** True while a mounted page has said it's a shared screen. */
-export function useSharedScreenActive(): boolean {
-  const [active, setActive] = useState(sharedScreens > 0);
-  useEffect(() => {
-    const fn = () => setActive(sharedScreens > 0);
-    fn();
-    sharedScreenListeners.add(fn);
-    return () => {
-      sharedScreenListeners.delete(fn);
-    };
-  }, []);
-  return active;
+  useEffect(() => (isShared ? markSharedScreen() : undefined), [isShared]);
 }
 
 /** True only on a Bar Games box (never standalone). */
@@ -84,6 +61,7 @@ export function useOnBox(): boolean {
   const [onBox, setOnBox] = useState(isOnBox(current));
   useEffect(() => {
     const fn = (ctx: VenueContext) => setOnBox(isOnBox(ctx));
+    setOnBox(isOnBox(current)); // the venue may have arrived between render and here
     listeners.add(fn);
     return () => {
       listeners.delete(fn);
