@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App.js";
-import { ErrorBoundary } from "@bargames/gamekit/client";
+import { basePath, ErrorBoundary } from "@bargames/gamekit/client";
 import { RefreshIcon } from "./components/Icons.js";
 
 // Top-level safety net (the game kit's boundary, this game's look): an
@@ -23,7 +23,8 @@ import "./index.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary fallback={(_error, reload) => <CrashScreen reload={reload} />}>
-      <BrowserRouter>
+      {/* basename: "" at the root, "/nofilter" when served under a path. */}
+      <BrowserRouter basename={basePath()}>
         <App />
       </BrowserRouter>
     </ErrorBoundary>

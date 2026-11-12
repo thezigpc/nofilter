@@ -1,16 +1,17 @@
 {
   "id": "nofilter",
   "name": "No Filter",
-  "version": "1.2.1",
-  "image": "ghcr.io/thezigpc/nofilter:1.2.1",
+  "version": "1.3.0",
+  "image": "ghcr.io/thezigpc/nofilter:1.3.0",
   "port": 3001,
-  "sdk": { "version": "0.8.0", "level": 3 },
+  "sdk": { "version": "0.10.0", "level": 3 },
   "routes": {
     "player": "/",
     "table": "/room/{code}?role=table&display=1",
     "host": "/room/new",
     "admin": "/admin"
   },
+  "routing": { "basePath": true },
   "health": "/health",
   "events": ["room_created", "room_closed", "players_changed", "round_started", "round_ended", "winner", "game_over"],
   "commands": ["create_room", "start", "next_round", "end"],

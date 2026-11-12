@@ -1,3 +1,4 @@
+import { basePath } from "@bargames/gamekit/client";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import QRCode from "qrcode";
@@ -23,7 +24,9 @@ export default function InvitePanel({
 }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const link = `${window.location.origin}/room/${roomCode}`;
+  // basePath(): the invite must keep the prefix when the game is served
+  // under one (https://venue/nofilter/room/ABCD).
+  const link = `${window.location.origin}${basePath()}/room/${roomCode}`;
   const large = size === "large";
 
   useEffect(() => {

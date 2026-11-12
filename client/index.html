@@ -2,6 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Assets are built with relative URLs (vite base "./"), and pages live
+         at nested routes like /room/ABCD, so they need a base to resolve
+         against. Under a path prefix the server puts its own <base> above
+         this one, and the first <base> in a document wins. -->
+    <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>No Filter</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

@@ -6,7 +6,7 @@
 
 import { applyTheme, getVenue, isOnBox, markSharedScreen, tableMode, watchVenue, type VenueContext } from "@bargames/sdk/client";
 import { useEffect, useRef, useState } from "react";
-import { serverUrl } from "./socket.js";
+import { serverOriginUrl } from "./socket.js";
 
 let current: VenueContext | null = null;
 const listeners = new Set<(ctx: VenueContext) => void>();
@@ -23,7 +23,7 @@ export function useVenueBranding(): void {
         },
         // The client runs on Vite's own port in dev. 30 s, so a staff
         // announcement typed on the box shows up quickly.
-        { base: serverUrl || undefined, intervalMs: 30_000 }
+        { base: serverOriginUrl || undefined, intervalMs: 30_000 }
       ),
     []
   );
@@ -85,7 +85,7 @@ export function useTableDisplay(enabled: boolean, connected: boolean, closed: bo
   useEffect(() => {
     if (!enabled) return;
     let stopped = false;
-    void getVenue({ base: serverUrl || undefined }).then((ctx) => {
+    void getVenue({ base: serverOriginUrl || undefined }).then((ctx) => {
       if (stopped) return;
       tm.current = tableMode(ctx);
       const { connected: c, closed: x } = latest.current;

@@ -5,8 +5,8 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 | | |
 |---|---|
 | Level | **3** (branded, events, commands and status, plus casting from the host screen) |
-| SDK | `@bargames/sdk` 0.8.0, vendored at `vendor/bargames-sdk-0.8.0.tgz` (with `@bargames/gamekit` 0.5.1) |
-| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.2.1`, port 3001 |
+| SDK | `@bargames/sdk` 0.10.0, vendored at `vendor/bargames-sdk-0.10.0.tgz` (with `@bargames/gamekit` 0.6.0) |
+| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.3.0`, port 3001 |
 | Box wiring | [`server/src/bargames.ts`](server/src/bargames.ts) (the only file that talks to the SDK on the server) |
 | Tests | `test/specs/33-bargames-standalone.mjs`, `test/specs/34-bargames-box.mjs` (the second runs a fake box core in-process) |
 
@@ -15,7 +15,7 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 Run against the SDK's mock box (`npx bargames mock-box . --game http://127.0.0.1:3101`, game on port 3101 with `BG_GAME_ID=nofilter BG_CORE_URL=http://127.0.0.1:7199 BG_GAME_TOKEN=dev-token DATA_DIR=<tmp>`):
 
 ```
-nofilter@1.2.1 · level 3 · http://127.0.0.1:3101
+nofilter@1.3.0 · level 3 · http://127.0.0.1:3101
 ✓ health /health → 200
 ✓ /__bargames/venue.json returns the box's branding ("No Filter (mock)")
 ✓ /__bargames/theme.css served
@@ -122,6 +122,24 @@ Typed into No Filter's admin login, the venue box's admin password signs in, eve
 - **Off a box** `checkVenuePassword` is always false and makes no network call (spec 33).
 
 Tested on the mock box (`box-password`): a guest saw the sign-in form and no wizard, a wrong password was refused, and the box password signed in on a game with no password set. Spec 34 covers the same against a fake core, including the refused setup; spec 33 checks that standalone setup is unchanged.
+
+## Under a path prefix (SDK 0.10.0, kit 0.6.0)
+
+The game runs at `https://<venue host>/nofilter/` as well as at the root. `bargames.json` declares `"routing": { "basePath": true }`. The proxy (the box's gateway, or a self-hoster's own) strips the prefix, so no server route changed. The prefix comes from `BG_BASE_PATH` (box) or `BASE_PATH` (self-hosted). With neither set, the game is at the root as before.
+
+- **Server** ([`index.ts`](server/src/index.ts)): the kit's `serveSpa(app, { dist })` serves the client and writes the prefix into index.html (`<meta name="bargames-base">` and `<base href="/nofilter/">`).
+- **Build** ([`vite.config.ts`](client/vite.config.ts)): `base: "./"`, so asset URLs are relative.
+- **index.html has its own `<base href="/">`.** This game's pages sit at nested routes (`/room/ABCD`, `/editor/preview`). The kit injects no `<base>` at the root, so relative assets would resolve to `/room/assets/...` and a cold load of a room link would get index.html back in place of the script. Under a prefix the injected `<base>` is placed first, and the first one in a document wins.
+- **Client:**
+  - [`socket.ts`](client/src/socket.ts): `serverUrl` is `serverBase(dev)` (every `fetch` builds on it); the socket is `io(serverOriginUrl, { path: socketPath() })`; the SDK's venue calls get the origin alone.
+  - [`main.tsx`](client/src/main.tsx): `<BrowserRouter basename={basePath()}>`. Every in-app move already went through `navigate()`.
+  - The three places that built a URL by hand carry the prefix: the invite link and QR ([`InvitePanel.tsx`](client/src/components/InvitePanel.tsx)), the Template Editor's pop-out window, and the sample-cards link.
+- **Shared origin.** Under path routing every game is on one origin. This game sets no cookies and has no service worker. Its storage keys are its own: `ttj_*` (seat tokens, the turn-sound mute) and `tj-admin-token` / `tj-admin-no-staff`.
+- **Inline SVG under `<base>`:** the theme scenes use `fill="url(#sky)"` references. They render under the prefix in Chromium and WebKit (checked by screenshot).
+
+Tested on the mock box with `--base /nofilter`, in Chromium and WebKit: home, create a room, join from the invite link (a cold load of `/nofilter/room/CODE`), the TV route and its QR, start a round, reload (same seat), drop and restore the network (reconnects), admin with the box password, staff sign-in, Card Management, the Template Editor and its preview. No request left the prefix and none failed. The same run at the root, off a box, passed too. [Spec 36](test/specs/36-base-path.mjs) checks the HTML both ways.
+
+In Git Bash, set `MSYS_NO_PATHCONV=1` for these commands, or `/nofilter` is rewritten to a Windows path.
 
 ## Status
 
@@ -244,7 +262,7 @@ Off a box: `enabled: false` and no network call (spec 33).
 
 ## The image
 
-- **Name:** `ghcr.io/thezigpc/nofilter:1.2.1`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet). A new repo's first publish needs a manual run of the workflow.
+- **Name:** `ghcr.io/thezigpc/nofilter:1.3.0`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet). A new repo's first publish needs a manual run of the workflow.
 - **Not published yet:** this repository has **no GitHub remote**. Publishing needs the user to:
   1. create the repo;
   2. push `main` (the workflow runs when `bargames.json` changes);

@@ -1,3 +1,4 @@
+import { basePath } from "@bargames/gamekit/client";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { TableLayout, TableStyle, TableStylePreset, TableTheme } from "@tabletop-judge/shared";
@@ -221,7 +222,7 @@ export default function TemplateEditorPage() {
       players: String(previewPlayerCount),
       pick: String(previewPickCount),
     });
-    window.open(`/editor/preview?${params.toString()}`, "_blank", "width=1400,height=860");
+    window.open(`${basePath()}/editor/preview?${params.toString()}`, "_blank", "width=1400,height=860");
   }
 
   function setThemeAndResetAccent(next: TableTheme) {

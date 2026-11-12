@@ -13,7 +13,7 @@ import { initCustomSets } from "./customSets/store.js";
 import { getGameName, initGameName } from "./gameName/store.js";
 import { getDefaultRoleNames, initRoleNames } from "./roleNames/store.js";
 import { bg, displayName, registerBarGames } from "./bargames.js";
-import { installShutdown, SOCKET_SERVER_OPTIONS } from "@bargames/gamekit/server";
+import { basePathFromEnv, installShutdown, serveSpa, SOCKET_SERVER_OPTIONS } from "@bargames/gamekit/server";
 import { getDefaultTheme, initDefaultTheme } from "./tableStyle/store.js";
 import { RoomManager } from "./rooms/RoomManager.js";
 import { registerSocketHandlers } from "./socket/index.js";
@@ -189,13 +189,14 @@ if (existsSync(MOCKUPS_DIR_PATH)) {
 const clientIndexPath = path.join(CLIENT_DIST_PATH, "index.html");
 const hasClientBuild = existsSync(clientIndexPath);
 if (hasClientBuild) {
-  app.use(express.static(CLIENT_DIST_PATH));
-  // SPA fallback: any non-API route (e.g. /room/ABCD) renders the client
-  // shell, which then does its own client-side routing.
-  app.get(/^(?!\/health).*/, (_req, res) => {
-    res.sendFile(clientIndexPath);
-  });
-  log.info("boot", "serving built client", { path: CLIENT_DIST_PATH });
+  // Static files, plus index.html for any other page route (e.g.
+  // /room/ABCD), which then does its own client-side routing. Behind a
+  // proxy that serves the game under a path (BG_BASE_PATH on a Bar Games
+  // box, BASE_PATH self-hosted) the kit writes that prefix into index.html
+  // so the client can find its API, socket and assets. The proxy strips
+  // the prefix, so every route in this file stays as it is.
+  serveSpa(app, { dist: CLIENT_DIST_PATH });
+  log.info("boot", "serving built client", { path: CLIENT_DIST_PATH, basePath: basePathFromEnv() || "/" });
 } else {
   log.warn("boot", "no client build found - run \"npm run build -w client\" to serve it from here", { path: CLIENT_DIST_PATH });
 }

@@ -364,7 +364,7 @@ export default function CoreSetPanel({
                 match — but each individual underscore counts as its own blank, so a card meant to have one blank
                 should use a single <code>_</code>, not <code>___</code> or more (the display already stretches one{" "}
                 <code>_</code> into a full-width blank on its own).{" "}
-                <a href="/sample-cards.json" target="_blank" rel="noreferrer">
+                <a href={`${serverUrl}/sample-cards.json`} target="_blank" rel="noreferrer">
                   See a working JSON example
                 </a>
                 .
