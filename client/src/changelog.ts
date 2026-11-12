@@ -36,6 +36,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-11-11",
     items: [
       {
+        kind: "new",
+        text: "At a venue, a game put up on a TV with no host now belongs to whoever joins first: scan the code on the TV and you're the host, with settings, Start and everything else a host has.",
+      },
+      {
         kind: "fixed",
         text: "At a venue with TVs, a room started with \"Set up the Shared Screen\" can now be put on a TV from that screen. Before, only a phone host got the TVs button.",
       },

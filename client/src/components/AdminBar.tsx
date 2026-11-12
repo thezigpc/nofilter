@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { socket } from "../socket.js";
-import { ADMIN_TOKEN_KEY as TOKEN_KEY } from "../adminSession.js";
+import { ADMIN_TOKEN_KEY as TOKEN_KEY, declineStaffSignIn, resumeAdminSession } from "../adminSession.js";
 
 /**
  * Sign-in for managing the shared card library.
@@ -30,17 +30,9 @@ export default function AdminBar({ onChange }: { onChange: (isAdmin: boolean) =>
 
   useEffect(() => {
     function refresh() {
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (token) {
-        socket.emit("adminResume", { token }, (res) => {
-          if (!res.ok) localStorage.removeItem(TOKEN_KEY);
-          apply(res.ok);
-        });
-      }
-      socket.emit("adminStatus", (res) => {
-        setConfigured(res.configured);
-        if (!res.isAdmin && !token) apply(false);
-      });
+      // Stored token first, then the venue box vouching for staff.
+      void resumeAdminSession().then((ok) => apply(ok));
+      socket.emit("adminStatus", (res) => setConfigured(res.configured));
     }
 
     socket.on("connect", refresh);
@@ -73,10 +65,11 @@ export default function AdminBar({ onChange }: { onChange: (isAdmin: boolean) =>
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) socket.emit("adminLogout", { token });
     localStorage.removeItem(TOKEN_KEY);
+    declineStaffSignIn();
     apply(false);
   }
 
-  if (!configured) {
+  if (!configured && !isAdmin) {
     return (
       <div className="panel admin-bar locked">
         <p>

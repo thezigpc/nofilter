@@ -92,6 +92,13 @@ export async function login(password: string, ip: string): Promise<LoginResult> 
   }
 }
 
+/** An admin session for someone the venue box vouches for (Bar Games staff
+ * sign-in). The caller must have checked bg.isStaff(req) first. */
+export async function trustedSession(): Promise<string> {
+  await init();
+  return auth.trustedSession();
+}
+
 export function isValidToken(token: string | undefined): boolean {
   return auth.isValidSession(token);
 }

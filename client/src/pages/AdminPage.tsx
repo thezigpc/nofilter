@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { DEFAULT_TABLE_STYLE } from "@tabletop-judge/shared";
 import type { RoomAdminSummary } from "@tabletop-judge/shared";
 import { socket } from "../socket.js";
-import { ADMIN_TOKEN_KEY } from "../adminSession.js";
+import { ADMIN_TOKEN_KEY, declineStaffSignIn, resumeAdminSession } from "../adminSession.js";
 import { fetchPublicConfig } from "../publicConfig.js";
 import { themeAttrs } from "../useThemeAttrs.js";
 import { BackArrowIcon } from "../components/Icons.js";
@@ -208,18 +208,11 @@ export default function AdminPage() {
   }, []);
 
   function refreshStatus() {
-    const token = localStorage.getItem(ADMIN_TOKEN_KEY);
-    function checkStatus() {
-      socket.emit("adminStatus", (res) => setStatus({ isAdmin: res.isAdmin, setupNeeded: res.setupNeeded }));
-    }
-    if (token) {
-      socket.emit("adminResume", { token }, (res) => {
-        if (!res.ok) localStorage.removeItem(ADMIN_TOKEN_KEY);
-        checkStatus();
-      });
-    } else {
-      checkStatus();
-    }
+    // Stored token first, then the venue box vouching for staff (never
+    // standalone) - see resumeAdminSession.
+    void resumeAdminSession().then(() =>
+      socket.emit("adminStatus", (res) => setStatus({ isAdmin: res.isAdmin, setupNeeded: res.setupNeeded }))
+    );
   }
 
   useEffect(() => {
@@ -237,6 +230,7 @@ export default function AdminPage() {
     const token = localStorage.getItem(ADMIN_TOKEN_KEY);
     if (token) socket.emit("adminLogout", { token });
     localStorage.removeItem(ADMIN_TOKEN_KEY);
+    declineStaffSignIn();
     refreshStatus();
   }
 
@@ -253,7 +247,9 @@ export default function AdminPage() {
 
       {!status ? (
         <p className="muted">Loading…</p>
-      ) : status.setupNeeded ? (
+      ) : status.setupNeeded && !status.isAdmin ? (
+        // Venue staff signed in through the box skip this: they're admin
+        // already, with or without a game password.
         <SetupWizard onDone={refreshStatus} />
       ) : !status.isAdmin ? (
         <LoginForm onDone={refreshStatus} />

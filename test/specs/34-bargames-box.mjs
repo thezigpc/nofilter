@@ -172,6 +172,55 @@ export default async function () {
     await waitFor(() => eventsFor(code, "room_closed").length === 1, { label: "room_closed after end" });
     assertEqual(eventsFor(code, "room_closed")[0].data.reason, "admin", "end's close reason");
 
+    // --- Staff sign-in: the box gateway vouches for staff signed in to the
+    // box admin, and they get an admin session without the game's password.
+    const viaGateway = { "x-bargames-via": "1" };
+    const staff = { ...viaGateway, "x-bargames-staff": "1" };
+    assertEqual((await (await fetch(`${base}/api/admin/status`, { headers: viaGateway })).json()).trusted, false, "a patron isn't trusted");
+    assertEqual((await fetch(`${base}/api/admin/trusted`, { method: "POST", headers: viaGateway })).status, 403, "a patron gets no session");
+    assertEqual((await fetch(`${base}/api/admin/trusted`, { method: "POST", headers: { "x-bargames-staff": "1" } })).status, 403, "the staff header alone, not through the gateway, is ignored");
+    assertEqual((await (await fetch(`${base}/api/admin/status`, { headers: staff })).json()).trusted, true, "staff are trusted");
+    const signedIn = await (await fetch(`${base}/api/admin/trusted`, { method: "POST", headers: staff })).json();
+    assert(signedIn.ok && typeof signedIn.token === "string", "staff get an admin session");
+    const adminSock = makeClient(base, "Staff");
+    clients.push(adminSock);
+    await waitFor(() => adminSock.socket.connected, { label: "staff socket" });
+    assertEqual((await adminSock.ack("adminResume", { token: signedIn.token })).ok, true, "the session works like a password login");
+    assertEqual((await adminSock.ack("adminStatus")).isAdmin, true, "and makes the socket admin");
+
+    // --- "Show on this TV": create_room with firstJoinerHosts. The room
+    // starts on a TV with no host; the first player to join is the host,
+    // with a phone host's powers. Later joiners aren't.
+    const shown = await command("create_room", undefined, { kind: "venue", firstJoinerHosts: true });
+    assert(shown.ok, `create_room firstJoinerHosts: ${JSON.stringify(shown)}`);
+    const tvCode = shown.data.roomCode;
+    const tv2 = makeClient(base, "TV2");
+    clients.push(tv2);
+    await waitFor(() => tv2.socket.connected, { label: "tv2 connect" });
+    assert((await tv2.ack("joinRoom", { roomCode: tvCode, name: "Shared Screen", role: "table" })).ok, "the TV joins");
+    await waitFor(() => tv2.state, { label: "tv2 state" });
+    assertEqual(tv2.state.you.isHost, false, "the TV is not the host");
+    const scanners = [];
+    for (const n of ["Flo", "Gil", "Hop"]) {
+      const c = makeClient(base, n);
+      clients.push(c);
+      scanners.push(c);
+      await waitFor(() => c.socket.connected, { label: `${n} connect` });
+      assert((await c.ack("joinRoom", { roomCode: tvCode, name: n, role: "player" })).ok, `${n} joins`);
+      await waitFor(() => c.state, { label: `${n} state` });
+    }
+    await waitFor(() => scanners[0].state.players.filter((p) => p.isHost).length === 1, { label: "one host" });
+    assertEqual(scanners[0].state.you.isHost, true, "the first player to join is the host");
+    assertEqual(scanners[0].state.you.canCast, true, "and can cast, like a phone host");
+    assertEqual(scanners[1].state.you.isHost, false, "the second player isn't");
+    await selectOfficialPacks(scanners[0]);
+    scanners[0].emit("startGame");
+    await waitFor(() => scanners[1].state.phase !== "lobby", { label: "the first joiner starts the game" });
+    scanners[0].emit("transferHost", { playerId: scanners[1].state.you.id });
+    await waitFor(() => scanners[1].state.you.isHost === true, { label: "host can be handed on" });
+    assertEqual((await status()).find((r) => r.code === tvCode)?.kind, "venue", "still reported as a venue room");
+    assert((await command("end", tvCode)).ok, "the box can still end it");
+
     // --- Casting from a room people started themselves. "Set up the Shared
     // Screen" makes a room whose Table never becomes host; it must still be
     // able to put the room on a TV, as must the phone host. Players can't.

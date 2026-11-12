@@ -50,9 +50,11 @@ export function registerBarGames(rooms: RoomManager): void {
   wireBarGames(bg, rooms.registry, {
     // "Put a game on the TVs -> New room": no host phone. Staff get the
     // room's host controls through hostUrl (a Table joining with the key).
-    createVenueRoom: ({ title }) => {
-      const { room, venueKey } = rooms.createVenueRoom(title);
-      log.info("bargames", "venue room created", { code: room.code });
+    // "Show on this TV" sends firstJoinerHosts: the room is on a TV with no
+    // host yet, and whoever scans its QR code first becomes the host.
+    createVenueRoom: ({ title, firstJoinerHosts }) => {
+      const { room, venueKey } = rooms.createVenueRoom(title, firstJoinerHosts === true);
+      log.info("bargames", "venue room created", { code: room.code, firstJoinerHosts: firstJoinerHosts === true });
       return { room, hostUrl: `${tablePath(room.code)}&key=${encodeURIComponent(venueKey)}` };
     },
     commands: {

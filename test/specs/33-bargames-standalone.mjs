@@ -52,6 +52,14 @@ export default async function ({ baseUrl }) {
     await waitFor(() => bob.errors.length > before, { label: "non-host start refused" });
     assertEqual(bob.errors.at(-1).code, "NOT_HOST", "non-host can't start");
 
+    // Staff sign-in is box-only: off a box nobody is vouched for, even when
+    // a request forges the gateway's headers.
+    const forged = { "x-bargames-via": "1", "x-bargames-staff": "1" };
+    const st = await (await fetch(`${baseUrl}/api/admin/status`, { headers: forged })).json();
+    assertEqual(st.trusted, false, "standalone never trusts a staff header");
+    const tr = await fetch(`${baseUrl}/api/admin/trusted`, { method: "POST", headers: forged });
+    assertEqual(tr.status, 403, "no passwordless admin session standalone");
+
     // Casting is box-only: off a box the host gets enabled:false, no network.
     const tvs = await room.host.ack("listTvs");
     assertEqual(tvs.enabled, false, "casting is disabled standalone");

@@ -119,13 +119,16 @@ export class RoomManager {
    * Nobody becomes host by joining it; the box drives it with commands, and
    * staff get host authority from the returned key (see Room.venueKey). The
    * registry keeps it open while a Table shows it, until "end" closes it.
+   * With firstJoinerHosts ("Show on this TV") the first player to join is
+   * the host instead, as in a room made on a phone.
    */
-  createVenueRoom(title?: string): { room: Room; venueKey: string } {
+  createVenueRoom(title?: string, firstJoinerHosts = false): { room: Room; venueKey: string } {
     const venueKey = nanoid(24);
     const kind: SessionKind = "venue";
     const room = this.registry.create(kind, (r) => {
       r.title = title?.trim().slice(0, 60) || undefined;
       r.venueKey = venueKey;
+      r.firstJoinerHosts = firstJoinerHosts;
     });
     return { room, venueKey };
   }

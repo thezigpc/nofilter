@@ -244,6 +244,18 @@ export class Room implements KitRoom {
    * Table joining with it becomes a venue controller (host authority, no
    * seat). Null for every other room, so the key path can't exist there. */
   venueKey: string | null = null;
+  /** Venue rooms only (Bar Games "Show on this TV"): the room starts on a TV
+   * with no host, and the first player to join becomes one, exactly as in a
+   * room made on a phone. See venueRun. */
+  firstJoinerHosts = false;
+
+  /** True for a room the venue itself runs: no player host, ever. Host
+   * authority comes from the box's commands and the keyed controller. A
+   * venue room made with firstJoinerHosts is NOT venue-run: it behaves like
+   * a room people started themselves, it just began on a TV. */
+  private get venueRun(): boolean {
+    return this.kind === "venue" && !this.firstJoinerHosts;
+  }
 
   /** Set by RoomManager to report lifecycle moments to a Bar Games box
    * (a no-op standalone). Kept as a plain hook so Room has no SDK import. */
@@ -317,12 +329,12 @@ export class Room implements KitRoom {
     // before anyone else joins must not claim host, and must not block the
     // first real player from claiming it afterward.
     //
-    // Venue rooms (Bar Games) are the exception: nobody is promoted to host
+    // Venue-run rooms (Bar Games) are the exception: nobody is promoted to host
     // just by arriving first - at a bar that would hand a random patron the
     // power to close the room or kick people. Host authority there comes
     // from the box's commands and a keyed controller screen instead.
     const isHost =
-      this.kind !== "venue" && role === "player" && ![...this.players.values()].some((p) => p.role === "player");
+      !this.venueRun && role === "player" && ![...this.players.values()].some((p) => p.role === "player");
     const isVenueController = role === "table" && !!this.venueKey && venueKey === this.venueKey;
     const player: ServerPlayer = {
       id,
@@ -430,7 +442,7 @@ export class Room implements KitRoom {
       throw new RoomError("NOT_A_PLAYER", "Only a player can take over as host.");
     }
     if (claimant.isHost) return;
-    if (this.kind === "venue") throw new RoomError("VENUE_ROOM", "This room is run by the venue - there's no host to take over.");
+    if (this.venueRun) throw new RoomError("VENUE_ROOM", "This room is run by the venue - there's no host to take over.");
 
     const claimableAt = this.hostClaimableSince();
     if (claimableAt === null) throw new RoomError("HOST_PRESENT", "The host is still connected.");
@@ -602,7 +614,7 @@ export class Room implements KitRoom {
       throw new RoomError("CANT_HOST_TABLE", "The Shared Screen can't be host — it doesn't hold cards or take a turn.");
     }
     if (target.id === actor.id) return;
-    if (this.kind === "venue") throw new RoomError("VENUE_ROOM", "This room is run by the venue - it doesn't have a player host.");
+    if (this.venueRun) throw new RoomError("VENUE_ROOM", "This room is run by the venue - it doesn't have a player host.");
     actor.isHost = false;
     target.isHost = true;
     this.broadcast();
@@ -690,7 +702,7 @@ export class Room implements KitRoom {
     if (!player) throw new RoomError("NOT_IN_ROOM", "You're not in this room.");
     // Venue rooms: a Table is usually a cast TV - or a patron who opened
     // ?role=table themselves - so only the keyed controller gets settings.
-    if (this.kind === "venue" && !hasHostAuthority(player)) {
+    if (this.venueRun && !hasHostAuthority(player)) {
       throw new RoomError("NOT_HOST", "This room is run by the venue - ask staff to change its settings.");
     }
     if (!hasHostAuthority(player) && player.role !== "table") {
@@ -707,7 +719,7 @@ export class Room implements KitRoom {
    * keyed controller counts. */
   private mayCast(player: ServerPlayer): boolean {
     if (hasHostAuthority(player)) return true;
-    return player.role === "table" && this.kind !== "venue";
+    return player.role === "table" && !this.venueRun;
   }
 
   requireCastAuthority(playerId: string): ServerPlayer {

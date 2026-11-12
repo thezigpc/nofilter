@@ -5,8 +5,8 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 | | |
 |---|---|
 | Level | **3** (branded, events, commands and status, plus casting from the host screen) |
-| SDK | `@bargames/sdk` 0.5.0, vendored at `vendor/bargames-sdk-0.5.0.tgz` (with `@bargames/gamekit` 0.3.2) |
-| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.1.1`, port 3001 |
+| SDK | `@bargames/sdk` 0.7.1, vendored at `vendor/bargames-sdk-0.7.1.tgz` (with `@bargames/gamekit` 0.4.0) |
+| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.2.0`, port 3001 |
 | Box wiring | [`server/src/bargames.ts`](server/src/bargames.ts) (the only file that talks to the SDK on the server) |
 | Tests | `test/specs/33-bargames-standalone.mjs`, `test/specs/34-bargames-box.mjs` (the second runs a fake box core in-process) |
 
@@ -15,7 +15,7 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 Run against the SDK's mock box (`npx bargames mock-box . --game http://127.0.0.1:3101`, game on port 3101 with `BG_GAME_ID=nofilter BG_CORE_URL=http://127.0.0.1:7199 BG_GAME_TOKEN=dev-token DATA_DIR=<tmp>`):
 
 ```
-nofilter@1.1.1 · level 3 · http://127.0.0.1:3101
+nofilter@1.2.0 · level 3 · http://127.0.0.1:3101
 ✓ health /health → 200
 ✓ /__bargames/venue.json returns the box's branding ("No Filter (mock)")
 ✓ /__bargames/theme.css served
@@ -89,6 +89,26 @@ No Filter's host is normally the first Player to join. In a venue room that woul
 - **Players** join by code exactly as in any room.
 
 Standalone none of this exists: `venueKey` is null on every normal room, so a key passed to one is ignored. Spec 33 checks this.
+
+### "Show on this TV" (`create_room` with `firstJoinerHosts: true`, SDK 0.7.0)
+
+The box puts a new room on one TV with no host. The room is still kind `venue` (the box can `start` and `end` it, it gets a `hostUrl`, and it stays open while a TV shows it), but it is not venue-run:
+
+- the first player to join (scanning the TV's QR code) becomes the host, exactly as in a room made on a phone: settings, Start, Players, Close Room, TVs;
+- host hand-over works as usual (Make host, claim after a disconnect, the next player when the host leaves);
+- a Shared Screen has the same settings and casting rights as in a room people started themselves.
+
+Without the flag nothing changes: nobody becomes host by joining, and only the keyed controller has host authority. The switch is `Room.venueRun` (spec 34).
+
+## Staff sign-in (SDK 0.7.0)
+
+Staff signed in to the box's admin open No Filter's admin page (`routes.admin`: `/admin`) without the game's password.
+
+- **Server** ([`index.ts`](server/src/index.ts)): `GET /api/admin/status` answers `{ trusted }` and `POST /api/admin/trusted` answers `{ ok, token }`, both from `bg.isStaff(req)`. These are the two routes the kit's `staffSignIn()` calls; the game doesn't use the kit's `adminRouter` because its admin session runs over the socket. The token is an ordinary admin session (`auth.trustedSession()`), so everything admin-gated accepts it.
+- **Client** ([`adminSession.ts`](client/src/adminSession.ts)): `/admin` and Card Management try the stored session, then `staffSignIn()`, before showing a form. Staff also skip the first-run wizard, so a box install needs no game password at all. After an explicit Sign out, the tab doesn't sign back in through the box.
+- **Off a box** `isStaff` is always false, even with forged gateway headers (spec 33), so the password stays the only way in.
+
+Tested on the mock box: `/__bargames/staff?next=/admin` lands on the signed-in admin page with no form; `?off=1` brings the form back.
 
 ## Status
 
@@ -211,7 +231,7 @@ Off a box: `enabled: false` and no network call (spec 33).
 
 ## The image
 
-- **Name:** `ghcr.io/thezigpc/nofilter:1.1.1`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet). A new repo's first publish needs a manual run of the workflow.
+- **Name:** `ghcr.io/thezigpc/nofilter:1.2.0`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet). A new repo's first publish needs a manual run of the workflow.
 - **Not published yet:** this repository has **no GitHub remote**. Publishing needs the user to:
   1. create the repo;
   2. push `main` (the workflow runs when `bargames.json` changes);

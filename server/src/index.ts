@@ -7,7 +7,7 @@ import { Server } from "socket.io";
 import type { ClientToServerEvents, ServerToClientEvents } from "@tabletop-judge/shared";
 import { BUNDLED_SAMPLE_CARD_DATA_PATH, CLIENT_DIST_PATH, CLIENT_ORIGIN, MOCKUPS_DIR_PATH, PORT } from "./config.js";
 import { deleteCoreSetPack, getCoreSetInfo, loadInitialCardData, uploadCoreSet } from "./cards/coreSet.js";
-import { isValidToken, setupNeeded } from "./admin/auth.js";
+import { isValidToken, setupNeeded, trustedSession } from "./admin/auth.js";
 import { initCustomCards } from "./customCards/store.js";
 import { initCustomSets } from "./customSets/store.js";
 import { getGameName, initGameName } from "./gameName/store.js";
@@ -40,6 +40,24 @@ app.use(cors({ origin: CLIENT_ORIGIN }));
 app.use(bg.middleware());
 app.get("/health", (_req, res) => {
   res.json({ ok: true, packs: cardData.packs.length });
+});
+
+// Bar Games staff sign-in (SDK 0.7.0): staff signed in to the venue box's
+// admin get an admin session here without this game's password. The two
+// routes are what the kit's staffSignIn() calls. bg.isStaff() only trusts
+// the box gateway's own header and is always false off a box, so standalone
+// these answer "not trusted" and the password is the only way in.
+app.get("/api/admin/status", (req, res) => {
+  res.set("Cache-Control", "no-store").json({ trusted: bg.isStaff(req) });
+});
+app.post("/api/admin/trusted", async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  if (!bg.isStaff(req)) {
+    res.status(403).json({ ok: false, error: "Not signed in to the venue box." });
+    return;
+  }
+  log.info("admin", "staff signed in through the venue box");
+  res.json({ ok: true, token: await trustedSession() });
 });
 
 // Public, unauthenticated - the browser tab title and HomePage heading
