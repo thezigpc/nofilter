@@ -2056,11 +2056,11 @@ button.primary {
 }
 
 /* "Join at <address>" under the Shared Screen's QR (the kit's JoinAddress).
-   The width cap is ours: a long venue address wraps and shrinks inside it
-   and never widens the panel. */
+   The width cap is ours and is set on the element (InvitePanel.tsx), since
+   the component sets its own inline max-width: a long venue address wraps
+   inside it and never widens the panel. */
 .invite-join-address {
-  max-width: min(100%, 44rem);
-  font-size: 2.2rem;
+  font-size: 1.8rem;
   font-weight: 700;
 }
 .invite-join-address .bargames-join-label {

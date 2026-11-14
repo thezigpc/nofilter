@@ -31,7 +31,11 @@ export default function InvitePanel({
   // from the box directly). Anywhere else it is this page's own origin plus
   // the path prefix, if the game is served under one.
   const venue = useVenueContext();
-  const { url: link, short: address } = joinDisplay(venue, `/room/${roomCode}`);
+  // roomShort (SDK 0.13.2): a box that serves short room links answers
+  // play.example.net/CODE with this room's join page. Absent off a box and
+  // on older boxes, where the game's own address is printed instead.
+  const { url: link, short, roomShort } = joinDisplay(venue, `/room/${roomCode}`, roomCode);
+  const address = roomShort ?? short;
   const large = size === "large";
 
   useEffect(() => {
@@ -64,11 +68,11 @@ export default function InvitePanel({
           <RulesSummaryPanel state={state} />
         </div>
         <div className="invite-link-row">
-          {/* The room code is the big heading above, so the screen prints
-              only where to go: no scheme, no room path. JoinAddress breaks
-              a long venue address after "." and "/" and shrinks it, so it
-              stays inside the panel. */}
-          <JoinAddress url={address} className="invite-join-address" />
+          {/* What to type on a phone: the box's short room link when it has
+              one, or the game's address (the room code is the big heading
+              above). minScale 1: on a TV a long address wraps after "." and
+              "/" at full size instead of shrinking. */}
+          <JoinAddress url={address} minScale={1} className="invite-join-address" style={{ maxWidth: "min(100%, 44rem)" }} />
           <button type="button" onClick={copyLink}>
             {copied ? "Copied!" : "Copy link"}
           </button>

@@ -33,6 +33,15 @@ export const CHANGE_KIND_LABELS: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-11-14",
+    items: [
+      {
+        kind: "improved",
+        text: "At a venue, the Shared Screen's \"Join at\" line can now be a short link that ends in the room code and opens the room directly. A long address stays full size and wraps onto a second line.",
+      },
+    ],
+  },
+  {
     date: "2026-11-13",
     items: [
       {

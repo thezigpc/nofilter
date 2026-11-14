@@ -95,8 +95,11 @@ export default async function ({ baseUrl }) {
 
     // Democracy, already in a real player's hand from before the leave, is
     // now refused at play time - the electorate is too small for a vote.
+    // Not the leaver: their last-seen state can still show a Democracy
+    // (at "common" two players often hold one), but their socket has left
+    // the room, so a play from it is never answered and this would time out.
     const stillOwner = room3.clients.find(
-      (c) => c.state?.yourHand?.some((card) => card.actionCardId === "democracy")
+      (c) => c !== leaver && c.state?.yourHand?.some((card) => card.actionCardId === "democracy")
     );
     if (stillOwner) {
       const card = stillOwner.state.yourHand.find((c) => c.actionCardId === "democracy");
