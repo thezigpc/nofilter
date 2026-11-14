@@ -5,8 +5,8 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 | | |
 |---|---|
 | Level | **3** (branded, events, commands and status, plus casting from the host screen) |
-| SDK | `@bargames/sdk` 0.13.0, vendored at `vendor/bargames-sdk-0.13.0.tgz` (with `@bargames/gamekit` 0.7.2) |
-| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.3.2`, port 3001 |
+| SDK | `@bargames/sdk` 0.13.1, vendored at `vendor/bargames-sdk-0.13.1.tgz` (with `@bargames/gamekit` 0.7.3) |
+| Manifest | [`bargames.json`](bargames.json): id `nofilter`, version `1.3.3`, port 3001 |
 | Box wiring | [`server/src/bargames.ts`](server/src/bargames.ts) (the only file that talks to the SDK on the server) |
 | Tests | `test/specs/33-bargames-standalone.mjs`, `test/specs/34-bargames-box.mjs` (the second runs a fake box core in-process) |
 
@@ -15,7 +15,7 @@ How No Filter integrates with a Bar Games venue box: what it emits, what it acce
 Run against the SDK's mock box (`npx bargames mock-box . --game http://127.0.0.1:3101`, game on port 3101 with `BG_GAME_ID=nofilter BG_CORE_URL=http://127.0.0.1:7199 BG_GAME_TOKEN=dev-token DATA_DIR=<tmp>`):
 
 ```
-nofilter@1.3.2 · level 3 · http://127.0.0.1:3101
+nofilter@1.3.3 · level 3 · http://127.0.0.1:3101
 ✓ health /health → 200
 ✓ /__bargames/venue.json returns the box's branding ("No Filter (mock)")
 ✓ /__bargames/theme.css served
@@ -188,6 +188,17 @@ Tested on the mock box under `/nofilter` in Chromium. The mock box sends only an
 
 `tableMode()` (pointer hidden, wake lock, banners) runs for the cast TV only, not for the keyed staff controller.
 
+### The join address on the Lobby screen (SDK 0.13.1, kit 0.7.3)
+
+- **What it prints.** Under the QR code the Shared Screen's Lobby prints "Join at" and the game's address (`play.example.net/nofilter`: no scheme, no room path) with the kit's `<JoinAddress>` ([`InvitePanel.tsx`](client/src/components/InvitePanel.tsx)). The room code is the big heading above it. Before 1.3.3 it printed the full room link.
+- **Which address.** The link, the QR code and the printed address come from the SDK's `joinDisplay(venue, "/room/CODE")`: the venue's public address on a box, whatever address the screen itself was opened on; the page's own origin (plus any path prefix) anywhere else.
+- **Width.** The cap is the game's (`.invite-join-address`, at most 44rem and never wider than the panel). A long address shrinks, then wraps after a "." or "/".
+- **Phones** keep the full link in the Invite panel, because it is there to be copied. It already wrapped.
+- **The cast TV's Lobby is fitted to the screen** ([`RoomPage.tsx`](client/src/pages/RoomPage.tsx)). Nobody can scroll a cast TV, so in display mode the invite panel is scaled to fit, as a round is. Before 1.3.3 the QR code ran off the bottom of a 1366×768 TV. A Table that staff opened by hand keeps its scrolling Lobby.
+- **The invite's three columns wrap** on a narrow or portrait screen. Before 1.3.3 they ran off both edges.
+
+Tested on the mock box under `/nofilter` with `--public-url` and a 50-character address, in Chromium at 1920×1080, 1366×768, 1080×1920 and 3840×2160: the address sat inside the panel and below the QR code, the whole invite panel was on screen, and nothing scrolled sideways. An 84-character address wrapped onto two lines in portrait and stayed inside the panel. At 800×600 the fit reaches its smallest scale (0.55) and the bottom of the panel is cut off.
+
 ## Branding
 
 - `/api/config` returns the venue's `displayName` on a box, and the game's own admin-set name otherwise.
@@ -268,7 +279,7 @@ Off a box: `enabled: false` and no network call (spec 33).
 
 ## The image
 
-- **Name:** `ghcr.io/thezigpc/nofilter:1.3.2`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet). A new repo's first publish needs a manual run of the workflow.
+- **Name:** `ghcr.io/thezigpc/nofilter:1.3.3`, from the workflow `.github/workflows/publish-image.yml` (unchanged from the SDK snippet). A new repo's first publish needs a manual run of the workflow.
 - **Not published yet:** this repository has **no GitHub remote**. Publishing needs the user to:
   1. create the repo;
   2. push `main` (the workflow runs when `bargames.json` changes);

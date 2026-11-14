@@ -328,7 +328,7 @@ export default function RoomPage() {
       // every open panel to cram into one screen at a shrunk size (the
       // more settings visible, the smaller it'd get) is the wrong call
       // here. Only auto-shrink during actual gameplay.
-      if (phase === "lobby") {
+      if (phase === "lobby" && !displayMode) {
         el.style.removeProperty("--table-max-width");
         el.style.zoom = String(manualScale);
         setAutoFitZoom(manualScale);
@@ -338,6 +338,39 @@ export default function RoomPage() {
 
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
+
+      // The cast TV's Lobby (display mode) is the exception to the rule
+      // above: nobody can scroll it, and it is the invite - the room code,
+      // the QR code and the join address have to be on screen whatever the
+      // TV's size. Fit the invite panel alone, not the page: .page's own
+      // min-height is a full viewport, so the page's height says nothing
+      // about how much room the invite needs. Measured at 1x, where
+      // getBoundingClientRect() means the same thing in every browser.
+      if (phase === "lobby") {
+        const heroBottom = (width: number | null): number | null => {
+          el.style.zoom = "1";
+          el.style.width = width === null ? "" : `${width}px`;
+          const hero = el.querySelector<HTMLElement>(".table-invite-hero");
+          const bottom = hero ? hero.getBoundingClientRect().bottom + window.scrollY : null;
+          el.style.width = "";
+          return bottom;
+        };
+        el.style.removeProperty("--table-max-width");
+        const zoomFor = (bottom: number) => Math.max(0.55, Math.min(manualScale, (viewportHeight / bottom) * 0.97));
+        const natural = heroBottom(null);
+        let lobbyZoom = natural === null ? manualScale : zoomFor(natural);
+        // Zoom changes the width the layout reflows against (a bigger zoom
+        // is a narrower page, where the invite's columns can wrap and grow
+        // taller), so measure once more at the width that zoom leaves.
+        if (natural !== null && Math.abs(lobbyZoom - 1) > 0.01) {
+          const atZoom = heroBottom(viewportWidth / lobbyZoom);
+          if (atZoom !== null) lobbyZoom = Math.min(lobbyZoom, zoomFor(atZoom));
+        }
+        el.style.zoom = String(lobbyZoom);
+        setAutoFitZoom(lobbyZoom);
+        setTableMaxWidth(null);
+        return;
+      }
 
       // Pass 1: measure at a neutral 1x baseline and the CSS's own default
       // width cap, not at manualScale - measuring post-zoom makes
@@ -412,7 +445,7 @@ export default function RoomPage() {
       window.clearTimeout(settleTimer);
       window.removeEventListener("resize", fit);
     };
-  }, [isTable, state]);
+  }, [isTable, state, displayMode]);
 
   if (!state && displayMode) {
     const theming = themeAttrs(preJoinTheme.theme, preJoinTheme.accentIndex);

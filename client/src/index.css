@@ -2055,6 +2055,22 @@ button.primary {
   font-size: 1.1rem;
 }
 
+/* "Join at <address>" under the Shared Screen's QR (the kit's JoinAddress).
+   The width cap is ours: a long venue address wraps and shrinks inside it
+   and never widens the panel. */
+.invite-join-address {
+  max-width: min(100%, 44rem);
+  font-size: 2.2rem;
+  font-weight: 700;
+}
+.invite-join-address .bargames-join-label {
+  font-size: 0.55em;
+  font-weight: 400;
+  color: #a9a8a2;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
 .table-invite-hero {
   text-align: center;
 }
@@ -2072,6 +2088,9 @@ button.primary {
    below spanning both - see RulesSummaryPanel.tsx and InvitePanel.tsx. */
 .invite-top-row {
   display: flex;
+  /* A narrow or portrait screen can't hold all three columns side by side:
+     they wrap under the QR instead of running off both edges. */
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: center;
   gap: 2.5rem;

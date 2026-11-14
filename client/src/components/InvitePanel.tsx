@@ -1,9 +1,11 @@
-import { basePath } from "@bargames/gamekit/client";
+import { JoinAddress } from "@bargames/gamekit/client";
+import { joinDisplay } from "@bargames/sdk/client";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import QRCode from "qrcode";
 import type { RoomStateForClient } from "@tabletop-judge/shared";
 import RulesSummaryPanel from "./RulesSummaryPanel.js";
+import { useVenueContext } from "../useVenue.js";
 
 export default function InvitePanel({
   roomCode,
@@ -24,9 +26,12 @@ export default function InvitePanel({
 }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  // basePath(): the invite must keep the prefix when the game is served
-  // under one (https://venue/nofilter/room/ABCD).
-  const link = `${window.location.origin}${basePath()}/room/${roomCode}`;
+  // On a Bar Games box the invite uses the venue's public address, whatever
+  // address this screen itself was opened on (a cast TV may load the game
+  // from the box directly). Anywhere else it is this page's own origin plus
+  // the path prefix, if the game is served under one.
+  const venue = useVenueContext();
+  const { url: link, short: address } = joinDisplay(venue, `/room/${roomCode}`);
   const large = size === "large";
 
   useEffect(() => {
@@ -59,7 +64,11 @@ export default function InvitePanel({
           <RulesSummaryPanel state={state} />
         </div>
         <div className="invite-link-row">
-          <code className="invite-link large">{link}</code>
+          {/* The room code is the big heading above, so the screen prints
+              only where to go: no scheme, no room path. JoinAddress breaks
+              a long venue address after "." and "/" and shrinks it, so it
+              stays inside the panel. */}
+          <JoinAddress url={address} className="invite-join-address" />
           <button type="button" onClick={copyLink}>
             {copied ? "Copied!" : "Copy link"}
           </button>
